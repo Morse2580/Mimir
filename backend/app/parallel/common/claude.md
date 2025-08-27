@@ -177,4 +177,41 @@ def test_circuit_logic():
 - Redis roundtrip: <10ms
 - Fallback activation: <100ms
 
+## Module Development Workflow
+
+**Security-Critical Implementation Pattern:**
+1. **ANALYZE**: Review PII patterns and circuit breaker requirements
+2. **DESIGN**: Plan pure detection functions vs I/O shell operations
+3. **IMPLEMENT**: Write core.py (pure), shell.py (Redis/alerts), tests
+4. **VALIDATE**: Test all 5 PII attack vectors, circuit breaker scenarios
+5. **INTEGRATE**: Verify integration with cost tracking and audit logging
+
+**File Structure (MANDATORY):**
+- `core.py`: Pure PII detection, circuit logic (no I/O)
+- `shell.py`: Redis state, alert notifications, external integrations
+- `contracts.py`: PII patterns, circuit breaker protocols
+- `events.py`: PIIViolationDetected, CircuitBreakerOpened events
+- `tests/test_core.py`: Pure function tests (5 PII vectors)
+- `tests/test_shell.py`: Integration tests (Redis, alerts)
+
+## Security-First Quality Gates
+
+**PII Detection Requirements:**
+- All 5 attack vectors blocked (email, ID, phone, name, IP)
+- Pattern matching functions are pure (deterministic)
+- False positive rate <1%
+- Detection latency <50ms
+
+**Circuit Breaker Requirements:**
+- State persistence in Redis
+- Recovery testing with mock failures
+- Fallback activation within 100ms
+- Alert generation within 5 seconds
+
+**Integration Requirements:**
+- Cost tracking integration verified
+- Audit logging for all violations
+- Alert channels tested (Teams, email)
+- Performance under load (1000 req/sec)
+
 This module is the **first line of defense** for data protection and service reliability.

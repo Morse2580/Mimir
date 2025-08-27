@@ -160,6 +160,42 @@ class AuditRecord:
 - 32 DST/timezone clock scenarios
 - PII injection attack prevention
 
+## Backend Development Workflow
+
+**Module Development Pattern:**
+1. **ANALYZE**: Review module's claude.md for contracts and constraints
+2. **DESIGN**: Plan pure core functions vs shell I/O operations  
+3. **IMPLEMENT**: Write core.py (pure), then shell.py (I/O), then tests
+4. **VALIDATE**: Verify events emit correctly, audit trails preserved
+5. **INTEGRATE**: Test module interactions via event bus
+
+**File Organization Rules:**
+- `core.py`: Pure functions only (no async, no I/O, deterministic)
+- `shell.py`: All I/O operations, external integrations, side effects
+- `contracts.py`: Protocols, type definitions, domain models
+- `events.py`: Domain events emitted by this module
+- Each file max 200 lines before splitting
+
+## Backend-Specific Quality Gates
+
+**Core Function Requirements:**
+- All business logic functions are pure (no side effects)
+- Result types used for error handling (no exceptions)
+- Deterministic output for same input
+- Unit testable without mocks
+
+**Shell Integration Requirements:**
+- All external API calls through circuit breakers
+- Cost checks before Parallel.ai calls
+- PII validation before external requests
+- Event emission after state changes
+
+**Module Integration Tests:**
+- Event publishing verified
+- Circuit breaker behavior tested  
+- Audit record creation confirmed
+- Performance within SLA limits
+
 ## Development Guidelines
 
 ### Code Organization
@@ -167,6 +203,13 @@ class AuditRecord:
 - Separate data transformations from I/O
 - Use immutable data structures
 - Explicit error handling with Result types
+- Async/await only in shell layer, never in core
+
+### Architecture Enforcement
+- Core modules NEVER import shell modules
+- Shell modules coordinate external dependencies
+- Events flow one-way (no circular subscriptions)
+- Database operations only in shell layer
 
 ### Commit Standards
 - `feat:` - New functionality
@@ -174,11 +217,31 @@ class AuditRecord:
 - `security:` - Security improvements
 - `audit:` - Audit trail changes
 - `test:` - Test additions/changes
+- Include module name in commit: `feat(parallel/common): add PII boundary`
 
 ### Module Independence
 - Modules communicate via events, not direct calls
 - Each module owns its data model
 - Shared types defined in contracts.py
 - No circular dependencies
+- Integration tests verify event contracts
+
+## Backend Performance Targets
+
+**Core Functions:**
+- <1ms execution time (pure computation)
+- No memory leaks (immutable data)
+- Deterministic behavior
+
+**Shell Operations:**
+- API calls: <200ms (95th percentile)
+- Database queries: <50ms average
+- Event publishing: <10ms
+- Circuit breaker check: <5ms
+
+**Module Integration:**
+- Event processing: <100ms end-to-end
+- Inter-module communication: Event-driven only
+- Resource cleanup: Automatic with context managers
 
 This architecture ensures audit-grade compliance while maintaining clean separation of concerns and testability.
