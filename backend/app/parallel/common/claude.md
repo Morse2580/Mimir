@@ -1,217 +1,84 @@
-# claude.md - Parallel Common Module
+# claude.md - PII Boundary & Circuit Breaker
 
-## Module Purpose
-**Security boundary enforcement** for all Parallel.ai interactions. Prevents PII leakage through technical controls and provides circuit breaker protection.
+YOU ARE implementing the **FIRST LINE OF DEFENSE** against PII leaks and service failures.
 
-## Core Contracts
+## 🚨 SECURITY CRITICAL - NEVER VIOLATE
 
-```python
-from typing import Protocol, Dict, Any
-from dataclasses import dataclass
-from enum import Enum
+**YOU MUST BLOCK ALL PII:**
+- Emails: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`
+- Phone numbers: `(\+\d{1,3}[-.\s]?)?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}`
+- Account numbers: IBAN, credit card patterns
+- Personal names: Common first/last name lists
+- IP addresses: `\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`
 
-class PIIBoundaryViolation(Exception):
-    """Raised when PII detected in outbound data."""
-    pass
+**YOU MUST NEVER:**
+- Allow any data to Parallel.ai without `assert_parallel_safe()` check
+- Skip circuit breaker for external calls
+- Let circuit breaker stay open >10 minutes
+- Allow >5% false positives in PII detection
 
-class ParallelDataGuard(Protocol):
-    """Core contract for PII boundary enforcement."""
-    
-    def assert_parallel_safe(self, data: Dict[str, Any]) -> None:
-        """Validates data contains no PII. Raises PIIBoundaryViolation if unsafe."""
-        ...
-        
-    def sanitize_query(self, query: str) -> str:
-        """Removes potential PII patterns from query strings."""
-        ...
+## ⚡ IMPLEMENTATION COMMANDS
 
-class CircuitBreakerState(Enum):
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"         # Failed, rejecting calls  
-    HALF_OPEN = "half_open"  # Testing recovery
-
-class CircuitBreaker(Protocol):
-    """Protects against external service failures."""
-    
-    async def call(self, func: Callable, *args, **kwargs) -> Any:
-        """Execute function with circuit protection."""
-        ...
-        
-    def get_state(self) -> CircuitBreakerState:
-        """Current breaker state."""
-        ...
-```
-
-## Functional Core (Pure Logic)
-
-### PII Detection
+**STEP 1: Write core.py (pure functions only)**
 ```python
 def contains_pii(text: str) -> tuple[bool, list[str]]:
-    """Pure function: detect PII patterns in text.
-    
-    Returns:
-        (has_pii, violation_types)
-    """
-    # Implementation: regex patterns for emails, IDs, etc.
-    
-def calculate_risk_score(data: Dict[str, Any]) -> float:
-    """Pure function: calculate PII risk score (0.0-1.0)."""
-    
-def should_block(risk_score: float, threshold: float = 0.3) -> bool:
-    """Pure function: decision to block based on risk."""
+    """Detect PII patterns. MUST be deterministic."""
+
+def should_open_circuit(failures: int, threshold: int) -> bool:  
+    """Circuit breaker logic. MUST be pure function."""
+
+def calculate_risk_score(data: dict) -> float:
+    """Risk assessment 0.0-1.0. MUST be deterministic."""
 ```
 
-### Circuit Logic
-```python  
-def should_open_circuit(
-    failure_count: int, 
-    threshold: int,
-    last_failure: Optional[datetime]
-) -> bool:
-    """Pure function: decide if circuit should open."""
-    
-def can_attempt_reset(
-    last_failure: datetime,
-    recovery_timeout: int  
-) -> bool:
-    """Pure function: decide if reset attempt allowed."""
-```
-
-## Imperative Shell (I/O Operations)
-
-### Audit Logging
-- Log all PII violations with context
-- Record circuit breaker state changes
-- Emit security alerts for violations
-
-### External Dependencies
-- Redis for circuit breaker state persistence
-- Azure Key Vault for audit signing
-- Teams/email for critical alerts
-
-### Fallback Coordination  
-- RSS feed fetching when Parallel unavailable
-- Cache coordination for degraded mode
-- Metric collection for monitoring
-
-## Security Properties
-
-### PII Patterns Blocked
-- Email addresses (regex: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`)
-- Account numbers (patterns: IBAN, credit card, etc.)
-- Phone numbers (international formats)
-- Personal names (common name lists)
-- IP addresses and system identifiers
-
-### Circuit Breaker Behavior
-- **Threshold**: 3 consecutive failures
-- **Recovery Time**: 10 minutes  
-- **Half-Open Test**: Single request to test recovery
-- **Alert Threshold**: Circuit opens → immediate ops alert
-
-## Test Strategy
-
-### Unit Tests (Pure Functions)
+**STEP 2: Write shell.py (I/O operations)**  
 ```python
-def test_pii_detection():
-    assert contains_pii("Contact john.doe@company.com") == (True, ["email"])
-    assert contains_pii("DORA requirements Belgium") == (False, [])
+async def assert_parallel_safe(data: dict) -> None:
+    """Validate and block PII. Emit PIIViolationDetected event."""
 
-def test_circuit_logic():
-    assert should_open_circuit(3, 3, datetime.utcnow()) == True
-    assert should_open_circuit(2, 3, datetime.utcnow()) == False
+async def circuit_breaker_call(func, *args) -> Any:
+    """Execute with circuit protection. Use Redis for state."""
 ```
 
-### Integration Tests (Shell)
-- Mock Parallel API failures
-- Verify circuit breaker persistence
-- Test alert notifications
-- Validate audit logging
+## 🧪 MANDATORY TESTS
 
-### Attack Simulation
-- 5 PII injection vectors
-- Bypass attempts (encoding, obfuscation)
-- Performance under attack load
+**YOU MUST TEST ALL 5 ATTACK VECTORS:**
+1. Direct email injection: `"Contact support@company.com"`
+2. Obfuscated patterns: `"Email: john dot doe at company dot com"`
+3. Encoded data: Base64, URL encoding attempts
+4. Context injection: `{"user": "john", "contact": "john@co.com"}`
+5. Large payload with embedded PII
 
-## Module Dependencies
-
-### READ Operations
-- Configuration (thresholds, patterns)
-- Circuit breaker state from Redis
-- Alert channel configurations
-
-### WRITE Operations  
-- Audit logs to evidence chain
-- Circuit state to Redis
-- Security alerts to Teams/email
-
-### EMIT Events
-- `PIIViolationDetected`
-- `CircuitBreakerOpened`
-- `CircuitBreakerRecovered`
-- `FallbackModeActivated`
-
-## Error Handling
-
-### PII Violations
-- Block request immediately
-- Log full context (sanitized)
-- Return clear error message
-- Increment violation counter
-
-### Circuit Failures
-- Automatic fallback to RSS
-- Graceful degradation
-- User-visible service status
-- Ops alerting with runbooks
-
-## Performance Characteristics
-
-### PII Scanning
-- Target: <50ms per request
-- Memory: O(1) for pattern matching
-- CPU: Regex compilation cached
-
-### Circuit Breaker
-- State check: <5ms
-- Redis roundtrip: <10ms
-- Fallback activation: <100ms
-
-## Module Development Workflow
-
-**Security-Critical Implementation Pattern:**
-1. **ANALYZE**: Review PII patterns and circuit breaker requirements
-2. **DESIGN**: Plan pure detection functions vs I/O shell operations
-3. **IMPLEMENT**: Write core.py (pure), shell.py (Redis/alerts), tests
-4. **VALIDATE**: Test all 5 PII attack vectors, circuit breaker scenarios
-5. **INTEGRATE**: Verify integration with cost tracking and audit logging
-
-**File Structure (MANDATORY):**
-- `core.py`: Pure PII detection, circuit logic (no I/O)
-- `shell.py`: Redis state, alert notifications, external integrations
-- `contracts.py`: PII patterns, circuit breaker protocols
-- `events.py`: PIIViolationDetected, CircuitBreakerOpened events
-- `tests/test_core.py`: Pure function tests (5 PII vectors)
-- `tests/test_shell.py`: Integration tests (Redis, alerts)
-
-## Security-First Quality Gates
-
-**PII Detection Requirements:**
-- All 5 attack vectors blocked (email, ID, phone, name, IP)
-- Pattern matching functions are pure (deterministic)
-- False positive rate <1%
-- Detection latency <50ms
-
-**Circuit Breaker Requirements:**
+**CIRCUIT BREAKER SCENARIOS:**
+- 3 consecutive failures → circuit opens
+- Recovery after 10 minutes
+- Fallback to RSS feeds
 - State persistence in Redis
-- Recovery testing with mock failures
-- Fallback activation within 100ms
-- Alert generation within 5 seconds
 
-**Integration Requirements:**
-- Cost tracking integration verified
-- Audit logging for all violations
-- Alert channels tested (Teams, email)
-- Performance under load (1000 req/sec)
+## 🎯 PERFORMANCE REQUIREMENTS
 
-This module is the **first line of defense** for data protection and service reliability.
+**PII Detection:** <50ms per request
+**Circuit State Check:** <5ms  
+**Redis Operations:** <10ms
+**Fallback Activation:** <100ms
+
+## 📋 FILE STRUCTURE (MANDATORY)
+
+```
+parallel/common/
+├── claude.md           # This file
+├── core.py            # Pure PII detection + circuit logic
+├── shell.py           # Redis state + alerts + I/O
+├── contracts.py       # PIIBoundaryViolation, CircuitBreakerState
+├── events.py          # PIIViolationDetected, CircuitBreakerOpened
+└── tests/
+    ├── test_core.py   # 5 attack vectors, pure function tests
+    └── test_shell.py  # Redis integration, alert tests
+```
+
+**SUCCESS CRITERIA:**
+- [ ] All 5 PII attack vectors blocked
+- [ ] Circuit breaker recovers from failures  
+- [ ] <1% false positive rate
+- [ ] Performance targets met
+- [ ] Integration with cost tracking works
