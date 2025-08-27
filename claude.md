@@ -183,3 +183,121 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - Test results and security verification status
 - What's next in the implementation queue
 - Stop and ask if encountering blockers
+
+---
+
+## 🧱 PRODUCTION-READY TECH STACK
+
+Here's the **production-ready tech stack** for Mimir (Belgian RegOps pilot), broken down by layer with concrete versions, rationale, and roles.
+
+### 🧩 Core Choices
+* **Language:** Python **3.11**
+* **Architecture style:** **Functional Core / Imperative Shell**
+* **Environments:** Local (Docker) → **Azure** (Container Apps)
+* **Data residency:** EU regions only; immutable evidence in **Azure Blob** with legal hold
+
+### 👩‍💻 Frontend (Auditor Cockpit + Ops UI)
+* **Framework:** **Next.js 14** (React 18, App Router) + **TypeScript 5**
+* **UI:** **Tailwind CSS 3**, **shadcn/ui**, **lucide-react** (clean, accessible components)
+* **State/data:** **TanStack Query** (server cache), **Zustand** (local state)
+* **Forms:** **react-hook-form** + **zod** (schema validation)
+* **i18n:** **i18next** (EN/NL/FR UI labels; don't translate source excerpts)
+* **Auth (OIDC):** **NextAuth** with **Azure AD (Entra ID)**
+* **Build/dev:** **Vite** (dev) / Next build (prod), **ESLint**, **Prettier**
+* **Why:** Fast to build, easy theming, good enterprise SSO story
+
+### 🐍 Backend APIs & Services
+* **Web framework:** **FastAPI** (ASGI) + **Uvicorn**
+* **Schema/types:** **Pydantic v2**
+* **DB ORM:** **SQLAlchemy 2** + **Alembic** (migrations)
+* **Background jobs:** **Celery 5** + **Redis 7** (for Parallel Task orchestration, digest, snapshots)
+* **Scheduling:** **APScheduler** (daily/weekly runs)
+* **HTTP client:** **httpx** (async; Parallel, NBB, snapshots)
+* **Time/tz:** **zoneinfo** (stdlib) + **pendulum** (clear DST math)
+* **Validation/XSD:** **lxml** (OneGate XML build + schema validation)
+* **PDF generation:** **WeasyPrint** (incident report PDF)
+* **Crypto/signing:** **cryptography** (hash/sign), Azure SDK (Key Vault)
+* **Why:** Async-first, typed, testable; pure core functions isolate compliance logic
+
+### 🗂️ Data & Storage
+* **Primary DB:** **PostgreSQL 15/16** (Azure Database for PostgreSQL Flexible Server)
+  - Tables: `incidents`, `obligation_mappings`, `mapping_reviews`, `evidence_ledger`, `digests`, `parallel_usage`
+* **Cache/queue:** **Redis 7** (Azure Cache for Redis)
+* **Evidence & snapshots:** **Azure Blob Storage** (immutable, legal hold + versioning)
+  - Container `evidence/` (hash-chained JSON, XML, PDF), `snapshots/` (HTML/PDF of sources)
+* **Why:** Postgres for relational audit trails; Blob immutability for regulator-proof retention
+
+### ☁️ Cloud & Platform (Azure)
+* **Runtime:** **Azure Container Apps** (or App Service) for API & workers
+* **Secrets:** **Azure Key Vault** (Parallel API key, signing keys)
+* **Monitoring:** **Azure Application Insights** (traces, metrics, logs)
+* **Auth / SSO:** **Azure AD (Entra ID)** (OIDC; groups ↔ RBAC)
+* **IaC:** **Terraform** (rg, container apps, key vault, storage, redis, postgres)
+* **Why:** Simple, managed, EU regions; scales enough for pilot
+
+### 🤖 Parallel.ai Integration
+* **APIs used:** **Search API** (fast retrieval), **Task API** (deep, structured research), **Webhooks** (async completion)
+* **Client:** **httpx** (thin wrapper), optional Parallel Python SDK if available
+* **Source policy:** allowlist **fsma.be**, **nbb.be**, **eur-lex.europa.eu**, **europa.eu**, **esma.europa.eu**, **eiopa.europa.eu**, **ccb.belgium.be**
+* **Guards:** `assert_parallel_safe()` (forbidden keys/patterns; payload ≤ **15k chars**)
+* **Circuit breaker:** custom (Redis counters + exponential backoff) → **fallback** to curated **RSS/sitemaps** + cached results
+* **Cost control:** Redis tracker + **€1,500/month cap**; **kill switch at 95%**
+* **Why:** Auto-citations + structured outputs; fallbacks ensure degraded but usable service
+
+### 🔐 Security & Compliance
+* **PII boundary:** hard block on sensitive fields/patterns before any external call
+* **Webhooks:** **HMAC** signature + timestamp + **replay cache** (Redis TTL 5m); fail-closed
+* **RBAC:** roles `Analyst`, `Reviewer(Legal)`, `Admin` (enforced in API + UI)
+* **Evidence ledger:** SHA-256 **hash-linked** records; **Key Vault** signing; weekly `verify_ledger.py`
+* **Retention:** Evidence/snapshots 7y immutable; app logs 1y; Parallel payloads 90d max
+* **SAST/Deps:** **Bandit**, **Semgrep**, **pip-tools**, **Dependabot**; container scan with **Trivy**
+* **Why:** Auditor-credible posture; least-privilege, tamper-evident artifacts
+
+### 🧪 Testing & Quality
+* **Unit/func tests:** **pytest**, **hypothesis**
+* **HTTP mocks:** **respx** / **responses** (Parallel/NBB)
+* **Golden vectors:** fixtures for **DST** edge cases (32-scenario matrix)
+* **Contract tests:** Pydantic models for `RegulatoryItem`, `ClassificationResult`, `OneGateExport`
+* **XSD tests:** Validate against **checksummed** NBB XSD + 3 sample vectors
+* **PII red-team:** injection tests (emails, VAT, IBAN, nat. no.) must **raise**
+* **CI:** **GitHub Actions** (lint, type, tests, docker build, security scan)
+* **Why:** Locks down the "deterministic core" and schema fidelity
+
+### 📈 Observability & SLOs
+* **Metrics:** App Insights + OpenTelemetry (`parallel.calls`, `breaker.state`, `digest.tierA.count`, `clock.deadline.miss`, `ledger.verify.ok`)
+* **Dashboards/alerts:** Digest job by **09:00 CET**, OneGate export **p95 < 30 min**, Parallel **5xx/429 >2%/15m** opens breaker, PII violations **= 0**
+* **Why:** Early warning + pilot health visibility
+
+### 🧰 Developer Tooling
+* **Task runner:** **Make** or **just**; **pre-commit** hooks (Black, isort, Ruff/Flake8)
+* **Packaging:** **pip-tools** (`requirements.in` → `requirements.txt`)
+* **Containers:** **Docker**; `docker-compose.local.yml` for full stack
+* **Docs:** Repo-wide **README.md**, module **claude.md**, **/docs/adr/** (architecture decisions)
+* **Local secrets:** `.env` (dev only), **never** in prod
+
+### 📦 Key Python Packages (Backend)
+```
+fastapi, uvicorn[standard], pydantic>=2, sqlalchemy>=2, alembic,
+httpx[http2], lxml, weasyprint, cryptography, azure-identity,
+azure-keyvault-keys, azure-storage-blob, redis, celery, apscheduler,
+pendulum, python-dateutil, structlog, opentelemetry-sdk, pytest, 
+hypothesis, respx
+```
+
+### 🔌 External Integrations
+* **Azure AD (OIDC)** → auth & roles
+* **NBB OneGate** → schema-checked **XML export** (pilot: export-only; no live submission)
+* **Email/Chat** (optional) → Teams/SMTP for alerts
+* **ServiceNow/Jira** (Phase 2) → tickets from digest/actions
+
+### 🧭 Migration Switches (Local → Azure)
+* **Feature flags:** `DEPLOY_ENV=LOCAL|AZURE`, `SUBMISSION_MODE=EXPORT_ONLY`, `PARALLEL_ENABLED=true|false`
+* **Storage abstraction:** `EvidenceStore` (LocalFS impl vs Blob impl)
+* **Secrets provider:** `.env` (dev) → **Key Vault** (prod)
+
+### 📝 TL;DR Stack Summary
+* **Python/FastAPI + Postgres/Redis** for a typed, testable core
+* **Next.js/TypeScript** for a clean auditor cockpit
+* **Azure** for managed, EU-resident services
+* **Parallel.ai** for cited research with strict PII, cost, and resiliency guardrails
+* **XSD + hash-linked evidence** to earn auditor trust from day one
