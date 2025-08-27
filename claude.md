@@ -110,3 +110,55 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **FINAL RULE:** When in doubt, ask. Better to confirm than break audit trails or exceed budget.
+
+---
+
+## 🤖 AGENTIC CODING WORKFLOWS
+
+### 🎯 AUTONOMOUS IMPLEMENTATION STRATEGY
+
+**WHEN USER SAYS "-p" (PROCEED):**
+1. **ANALYZE** current todo list status
+2. **SELECT** next pending task 
+3. **READ** relevant module claude.md for implementation steps
+4. **EXECUTE** the 5-step workflow automatically
+5. **COMMIT** and **REPORT** results
+
+**MODULE IMPLEMENTATION PATTERN:**
+- Read module's claude.md FIRST (contains exact implementation steps)
+- Follow the STEP 1/STEP 2 structure in module claude.md
+- Write core.py (pure functions) before shell.py (I/O operations)  
+- Test core functions without mocks, shell functions with mocks
+- Commit each file separately (<150 LOC per commit)
+
+### 🚦 AUTONOMOUS DECISION MAKING
+
+**PROCEED WITHOUT ASKING WHEN:**
+- Task has clear implementation steps in module claude.md
+- Using only allowed tools (pytest, git, uvicorn, etc.)
+- Commit size <150 LOC
+- No approval gates triggered
+- Following established patterns
+
+**ASK FOR CONFIRMATION WHEN:**
+- Multiple valid implementation approaches
+- Approaching forbidden operations or approval gates
+- Test failures indicating potential design issues  
+- Unclear integration points between modules
+- User requirements ambiguous
+
+### 🔄 CONTINUOUS WORK LOOP
+
+**FOR EXTENDED CODING SESSIONS:**
+1. Complete current task following 5-step workflow
+2. Update todo list status
+3. **AUTO-SELECT** next highest priority pending task
+4. Read that module's claude.md
+5. Begin implementation without waiting for user input
+6. Continue until blocked or all tasks complete
+
+**REPORTING FORMAT:**
+- Brief progress update after each commit
+- Test results and security verification status
+- What's next in the implementation queue
+- Stop and ask if encountering blockers
