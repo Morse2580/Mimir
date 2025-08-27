@@ -124,17 +124,105 @@ This Python project is a **Belgian RegOps Platform: Production-Hardened Pilot Im
 - Fallback to RSS when Parallel.ai unavailable
 - Kill switch triggers at 95% of monthly spend cap
 
+## Development Workflow
+
+**Task Loop Structure (ALWAYS follow this pattern):**
+1. **PLAN**: Analyze task, break into <150 LOC commits, identify risks
+2. **IMPLEMENT**: Write code following security/audit guidelines  
+3. **TEST**: Run relevant test suites, verify acceptance criteria
+4. **VERIFY**: Check audit trails, cost tracking, evidence integrity
+5. **REPORT**: Summarize changes, test outcomes, next steps
+
+**Development Rules:**
+- Split large changes into <150 LOC per commit
+- Never run destructive operations without `--dry-run` first
+- Always summarize diffs + test results after each change
+- Prefer small, pure functions over deep class hierarchies
+- Max 200 lines per file before splitting into modules
+
+## Allowed Tools & Commands
+
+**✅ APPROVED TOOLS:**
+- `pytest`, `pytest-asyncio` - Testing framework
+- `black`, `ruff` - Code formatting and linting
+- `uvicorn` - Development server
+- `git`, `gh` - Version control and GitHub operations
+- `pip`, `poetry` - Dependency management
+- `sqlalchemy`, `alembic` - Database operations (read-only queries)
+- `httpx`, `asyncio` - HTTP client and async operations
+- `lxml` - XSD validation
+- `sha256sum` - Checksum verification
+
+**❌ RESTRICTED OPERATIONS (require confirmation):**
+- `rm -rf`, `sudo rm` - File deletion commands
+- Database schema migrations (`alembic upgrade`)
+- Production deployment commands
+- Cost guardrail modifications (`backend/app/cost/guardrails.py`)
+- Evidence ledger updates (`backend/app/evidence/verify_ledger.py`)
+- XSD schema modifications
+
+**⚠️ REQUIRES HUMAN APPROVAL:**
+- Changes to security boundaries (`assert_parallel_safe()`)
+- Circuit breaker threshold modifications
+- Budget cap or kill switch logic changes
+- Audit trail schema changes
+
+## Review Triggers
+
+**Automatic Human Review Required:**
+- **Obligation Mappings** → Lawyer approval via review workflow
+- **Schema Changes** → Senior engineer review
+- **Security Controls** → Mandatory security team sign-off
+- **Cost Guardrails** → Finance + engineering approval
+- **Evidence Chain** → Audit team verification
+
+**Code Review Guidelines:**
+- All security-related changes require 2 approvals
+- PII boundary changes require security team review
+- Cost tracking logic requires finance team review
+- XSD validation changes require compliance review
+
+## Success Metrics & Quality Gates
+
+**Per Iteration Targets:**
+- 90%+ of existing tests remain passing
+- No new PII boundary violations logged
+- Cost tracking accuracy within 0.001 EUR
+- All acceptance criteria met before merge
+
+**Quality Gates:**
+- All 32 DST scenarios pass
+- Official NBB test vectors validate
+- 5 PII injection attack vectors blocked  
+- Circuit breaker recovery functional
+- Evidence chain integrity verified
+
+**Performance Requirements:**
+- API response times <200ms (95th percentile)
+- XSD validation <5 seconds
+- Cost check <10ms
+- Audit record creation <50ms
+
 ## Development Practices
 
 **Commit Rules:**
 - Prefix: `feat:`, `fix:`, `security:`, `audit:`, `test:`
 - All commits must maintain audit trail integrity
 - Security changes require mandatory review
+- Include test results in commit message when significant
+
+**Code Style:**
+- Use `async/await` for all I/O operations
+- Prefer composition over inheritance
+- Pure functions for business logic (no side effects)
+- Explicit error handling with Result types
+- Immutable data structures where possible
 
 **Review Process:**
 - Lawyer review required for obligation mappings
 - All reviews create immutable audit entries
 - Review state machine prevents stale approvals
+- Security changes require dual approval
 
 **Production Deployment:**
 - XSD checksum verification before deployment
@@ -214,3 +302,6 @@ python backend/app/evidence/verify_ledger.py
 - [ ] Cost: Detailed breakdown by use case
 
 This platform serves Belgian financial institutions with production-grade regulatory compliance automation while maintaining strict audit standards and cost controls.
+
+
+Remember to use the GitHub CLI (`gh`) for all GitHub-related tasks.
