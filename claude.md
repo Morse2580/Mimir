@@ -2,6 +2,27 @@
 
 YOU ARE working on a **Belgian RegOps Platform** for financial institutions requiring DORA compliance.
 
+## 📚 DOMAIN KNOWLEDGE
+
+**DORA (EU Reg. 2022/2554):**
+- Purpose: Make EU financial entities operationally resilient against ICT incidents
+- Who: Banks, insurers, payment institutions, investment firms, critical ICT third-party providers
+- Key duties: ICT risk management, incident reporting with hard deadlines, registers, testing, third-party oversight
+- Why critical: Hard deadlines, auditable evidence required, failure = supervisory action/fines
+
+**NIS2 (Directive):**  
+- Purpose: Raise baseline cyber resilience across essential/important entities
+- Core duties: Risk management, incident notification timelines, supply-chain oversight
+- Penalties: Up to €10M or 2% revenue for essential entities
+
+**Belgian Supervisors:**
+- **NBB** (National Bank): Prudential supervisor, OneGate reporting portal (XML submissions)
+- **FSMA**: Markets conduct/consumer protection
+- **CCB/Safeonweb**: National cyber guidance, NIS2 hub
+- **Languages**: Publications in NL/FR/EN - system must handle all three
+
+**Why Mimir exists:** Automate continuous compliance + produce auditor-grade artifacts (cited digests, obligation mappings, OneGate-ready incident packs) within official deadlines.
+
 ## 🚨 CRITICAL RULES - NEVER VIOLATE
 
 **YOU MUST NEVER:**
