@@ -1,288 +1,216 @@
-# claude.md - Regulatory Monitor Module
+# claude.md - Regulatory Source Monitor
 
-## Module Purpose
-**Multi-language regulatory source monitoring** with intelligent fallbacks. Scans Tier-A sources (FSMA, NBB, ESMA) and Tier-B sources with RSS fallback when Parallel.ai unavailable.
+YOU ARE implementing **multi-source regulatory monitoring** with immutable snapshots and circuit breaker fallbacks.
 
-## Core Contracts
+## 🎯 MODULE PURPOSE
+Continuously monitor Belgian/EU regulatory sources for changes. Capture immutable snapshots, detect new obligations, and feed regulatory digest pipeline with Tier-A verified content.
 
+## 🚨 SECURITY CRITICAL - NEVER VIOLATE
+
+**YOU MUST ALWAYS:**
+- Run `assert_parallel_safe()` before any Parallel.ai calls
+- Use circuit breaker for all external source monitoring
+- Create immutable snapshots for evidence integrity
+- Apply source tier policy (Tier-A actionable, Tier-B informational)
+- Record cost and source attribution for all operations
+
+**YOU MUST NEVER:**
+- Send PII to external monitoring services
+- Cache monitoring results without expiration
+- Skip snapshot integrity verification
+- Mix Tier-A and Tier-B source obligations
+- Process sources without domain validation
+
+## ⚡ IMPLEMENTATION COMMANDS
+
+**STEP 1: Write core.py (pure functions only)**
 ```python
-from typing import Protocol, NamedTuple
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
-
-class SourceTier(Enum):
-    TIER_A = "tierA"  # Critical: FSMA, NBB, ESMA
-    TIER_B = "tierB"  # Important: EBA, ECB, National
-    
-class Language(Enum):
-    DUTCH = "nl"
-    FRENCH = "fr"  
-    ENGLISH = "en"
-
-@dataclass(frozen=True)
-class SourceDefinition:
-    """Immutable source configuration."""
-    name: str
-    tier: SourceTier
-    languages: tuple[Language, ...]
-    primary_url: str
-    rss_fallback: Optional[str]
-    sitemap_fallback: Optional[str]
-    scan_frequency_hours: int
-
-@dataclass(frozen=True)
-class ScanResult:
-    """Individual document found during scan."""
-    url: str
-    title: str
-    excerpt: str
-    language: Language
-    published_at: Optional[datetime]
-    source: str
-    tier: SourceTier
-    fallback_mode: bool  # True if from RSS/sitemap
-    relevance_score: float  # 0.0-1.0
-
-class RegulatoryScanner(Protocol):
-    """Core contract for regulatory monitoring."""
-    
-    def scan_source(
-        self, 
-        source: SourceDefinition,
-        objective: str
-    ) -> tuple[list[ScanResult], bool]:
-        """Scan single source. Returns (results, used_fallback)."""
-        ...
-        
-    def prioritize_results(
-        self, 
-        results: list[ScanResult]
-    ) -> list[ScanResult]:
-        """Pure function: prioritize by tier + relevance."""
-        ...
-```
-
-## Functional Core (Pure Logic)
-
-### Source Prioritization
-```python
-def calculate_source_priority(
-    tier: SourceTier,
-    language: Language,
-    relevance_score: float,
-    freshness_hours: float
-) -> float:
-    """Pure function: calculate source priority score.
-    
-    Formula: tier_weight * language_weight * relevance * freshness_decay
-    """
-    
-def should_use_fallback(
-    primary_failed: bool,
-    circuit_open: bool,
+def extract_regulatory_changes(
+    source_content: str,
+    previous_hash: str,
     source_tier: SourceTier
-) -> bool:
-    """Pure function: decide fallback strategy."""
-    
-def merge_multilingual_results(
-    dutch_results: list[ScanResult],
-    french_results: list[ScanResult], 
-    english_results: list[ScanResult]
-) -> list[ScanResult]:
-    """Pure function: deduplicate and merge language results."""
+) -> list[RegulatoryChange]:
+    """Extract regulatory changes from content. MUST be pure."""
+
+def calculate_change_significance(
+    change: RegulatoryChange,
+    impact_keywords: tuple[str, ...]
+) -> SignificanceLevel:
+    """Classify change significance. MUST be deterministic."""
+
+def build_monitoring_schedule(
+    sources: list[RegulatorySource],
+    current_time: datetime
+) -> MonitoringSchedule:
+    """Build optimal monitoring schedule. MUST be pure."""
 ```
 
-### Content Analysis
+**STEP 2: Write shell.py (I/O operations)**
 ```python
-def extract_key_terms(text: str, language: Language) -> tuple[str, ...]:
-    """Pure function: extract regulatory key terms by language."""
-    
-def calculate_relevance(
-    text: str,
-    objective: str,
-    language: Language
-) -> float:
-    """Pure function: relevance score 0.0-1.0."""
-    
-def detect_document_language(text: str) -> Language:
-    """Pure function: language detection."""
+async def monitor_regulatory_sources(
+    sources: list[RegulatorySource]
+) -> MonitoringResult:
+    """Monitor sources with circuit breaker protection."""
+
+async def create_immutable_snapshot(
+    source_url: str,
+    content: str
+) -> SnapshotReference:
+    """Create Azure blob snapshot with integrity hash."""
 ```
 
-## Imperative Shell (I/O Operations)
+## 🔧 SOURCE CONFIGURATION
 
-### Source Loading
-- Load source definitions from YAML config
-- Fetch RSS feeds with timeout/retry
-- Parse sitemap.xml files
-- HTTP client with proper headers
-
-### Parallel.ai Integration  
-- Search API calls with PII boundary checks
-- Circuit breaker integration
-- Cost tracking per API call
-- Fallback coordination
-
-### Result Persistence
-- Store scan results with timestamps
-- Maintain source scan history
-- Track fallback usage statistics
-- Update source health metrics
-
-### Snapshot Coordination
-- Trigger immutable snapshots for found content
-- Schedule verification jobs
-- Update snapshot inventory
-
-## Source Configuration
-
-### Tier-A Sources (Critical)
-```yaml
-tier_a_sources:
-  fsma:
-    name: "FSMA Belgium"
-    languages: ["nl", "fr", "en"]
-    primary_url: "https://www.fsma.be"
-    rss_fallback: "https://www.fsma.be/en/rss.xml"
-    scan_frequency_hours: 4
-    
-  nbb:
-    name: "National Bank of Belgium"  
-    languages: ["nl", "fr", "en"]
-    primary_url: "https://www.nbb.be"
-    rss_fallback: "https://www.nbb.be/en/rss"
-    scan_frequency_hours: 6
-    
-  esma:
-    name: "European Securities Markets Authority"
-    languages: ["en"]
-    primary_url: "https://www.esma.europa.eu"
-    rss_fallback: "https://www.esma.europa.eu/rss"
-    scan_frequency_hours: 8
-```
-
-### Tier-B Sources (Important)
-```yaml
-tier_b_sources:
-  eba:
-    name: "European Banking Authority"
-    languages: ["en"]
-    rss_fallback: "https://www.eba.europa.eu/rss"
-    scan_frequency_hours: 12
-    
-  ecb:
-    name: "European Central Bank" 
-    languages: ["en"]
-    rss_fallback: "https://www.ecb.europa.eu/rss"
-    scan_frequency_hours: 12
-```
-
-## Language Handling Strategy
-
-### Multi-Language Scanning
-- **Dutch (NL)**: Primary for Belgian-specific content
-- **French (FR)**: Secondary for Belgian content  
-- **English (EN)**: EU-wide regulations and international standards
-
-### Language Priority
-1. **Objective Language**: Match query language when possible
-2. **Source Native**: Use source's primary language
-3. **Fallback Chain**: EN → FR → NL for coverage
-
-### Translation Coordination  
-- No automatic translation (regulatory accuracy critical)
-- Flag multi-language content for manual review
-- Preserve original language in audit trail
-
-## Test Strategy
-
-### Source Integration Testing
+**TIER-A SOURCES (Actionable):**
 ```python
-@pytest.mark.integration
-async def test_tier_a_sources():
-    """Verify all Tier-A sources accessible."""
-    for source in tier_a_sources:
-        results = await scanner.scan_source(source, "DORA compliance")
-        assert len(results) > 0
-        assert not any(r.fallback_mode for r in results)
+TIER_A_SOURCES = [
+    RegulatorySource(
+        url="https://www.nbb.be/en/circulars",
+        domain="nbb.be",
+        authority="NBB",
+        check_interval_hours=4,
+        languages=["en", "nl", "fr"]
+    ),
+    RegulatorySource(
+        url="https://www.fsma.be/en/news",
+        domain="fsma.be", 
+        authority="FSMA",
+        check_interval_hours=6
+    ),
+    RegulatorySource(
+        url="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2554",
+        domain="eur-lex.europa.eu",
+        authority="EU_COMMISSION",
+        check_interval_hours=12
+    )
+]
 ```
 
-### Fallback Testing
+**TIER-B SOURCES (Informational):**
 ```python
-@pytest.mark.integration 
-async def test_rss_fallback():
-    """Test RSS fallback when Parallel unavailable."""
-    # Mock Parallel circuit breaker open
-    with mock_circuit_open():
-        results = await scanner.scan_source(fsma_source, "new regulations")
-        assert all(r.fallback_mode for r in results)
-        assert len(results) > 0
+TIER_B_SOURCES = [
+    RegulatorySource(
+        url="https://www.eba.europa.eu/news-press",
+        domain="eba.europa.eu",
+        authority="EBA",
+        check_interval_hours=24
+    )
+]
 ```
 
-### Language Testing
+## 🛡️ MONITORING SECURITY
+
+**Content Integrity:**
 ```python
-def test_language_detection():
-    nl_text = "Belgische regelgeving voor financiële instellingen"
-    fr_text = "Réglementation belge pour les institutions financières"
-    en_text = "Belgian regulation for financial institutions"
-    
-    assert detect_document_language(nl_text) == Language.DUTCH
-    assert detect_document_language(fr_text) == Language.FRENCH  
-    assert detect_document_language(en_text) == Language.ENGLISH
+def verify_source_integrity(
+    content: str,
+    expected_domain: str,
+    ssl_cert_thumbprint: str
+) -> IntegrityResult:
+    """Verify source hasn't been compromised."""
 ```
 
-## Monitoring & Alerting
+**Change Detection:**
+```python
+def detect_content_changes(
+    current_content: str,
+    previous_snapshot_hash: str
+) -> ChangeDetection:
+    """Detect meaningful changes, ignore cosmetic updates."""
+```
 
-### Source Health Metrics
-- Scan success rate per source
-- Fallback usage frequency
-- Average response times
-- Content freshness lag
+## 🧪 MANDATORY TESTS
 
-### Quality Indicators
-- Results per scan (trend analysis)
-- Relevance score distribution
-- Language coverage completeness
-- False positive rates
+**YOU MUST TEST:**
+- Source tier enforcement (Tier-A vs Tier-B handling)
+- Circuit breaker activation on source failures
+- Snapshot immutability and integrity verification
+- Multi-language content extraction
+- Change significance classification
 
-### Alert Conditions
-- Tier-A source unavailable >1 hour
-- Fallback mode activated >24 hours
-- Zero results for >3 consecutive scans
-- Relevance scores consistently low (<0.3)
+**MONITORING SCENARIOS:**
+```python
+def test_tier_a_creates_actionable_items():
+    """Tier-A sources generate actionable regulatory items."""
+    change = RegulatoryChange(
+        source_tier=SourceTier.TIER_A,
+        content="New DORA technical standards effective March 2025"
+    )
+    result = process_regulatory_change(change)
+    assert result.actionable == True
+    assert result.requires_mapping == True
 
-## Module Dependencies
+def test_tier_b_informational_only():
+    """Tier-B sources are informational, not actionable."""
+    change = RegulatoryChange(
+        source_tier=SourceTier.TIER_B,
+        content="EBA publishes guidance on risk management"
+    )
+    result = process_regulatory_change(change)
+    assert result.actionable == False
+    assert result.for_awareness_only == True
+```
 
-### READ Operations
-- Source definitions from YAML config
-- Circuit breaker state from common module  
-- Language models/dictionaries for detection
-- Historical scan results for trend analysis
+## 🎯 PERFORMANCE REQUIREMENTS
 
-### WRITE Operations
-- Scan results to database
-- Source health metrics to monitoring
-- Snapshot requests to snapshot service
-- Audit trail entries
+**Source Monitoring:** <30 seconds per source scan
+**Change Detection:** <5 seconds per content comparison  
+**Snapshot Creation:** <10 seconds per source
+**Integrity Verification:** <2 seconds per snapshot
 
-### EMIT Events
-- `SourceScanned(source, results_count, fallback_used)`
-- `FallbackActivated(source, reason)`
-- `SourceHealthChanged(source, status)`
-- `RelevantContentFound(source, url, relevance_score)`
+## 📋 FILE STRUCTURE (MANDATORY)
 
-## Performance Characteristics
+```
+regulatory/monitor/
+├── claude.md           # This file
+├── core.py            # Pure monitoring logic + change detection
+├── shell.py           # Source fetching + snapshot creation
+├── contracts.py       # RegulatorySource, MonitoringResult types
+├── events.py          # RegulatoryChangeDetected, SourceMonitoringFailed events
+├── scheduler.py       # Monitoring schedule management
+└── tests/
+    ├── test_core.py   # Change detection, significance classification
+    └── test_shell.py  # Source monitoring, circuit breaker integration
+```
 
-### Scanning Speed
-- Target: Complete Tier-A scan <5 minutes
-- Parallel requests: Max 3 concurrent per source
-- Timeout: 30s per HTTP request
-- Retry: 2 attempts with exponential backoff
+## 🔗 INTEGRATION POINTS
 
-### Memory Usage
-- Streaming RSS parsing (no full DOM load)
-- Result batching (max 100 results in memory)
-- Language model caching
-- Connection pooling for HTTP clients
+**DEPENDS ON:**
+- `parallel/common/` - Circuit breaker and PII boundary
+- Azure Blob Storage - Immutable snapshot storage
+- Redis - Monitoring schedule state
+- PostgreSQL - Source monitoring audit log
 
-This module provides **reliable, multi-language regulatory intelligence** with graceful degradation capabilities.
+**EMITS EVENTS:**
+- `RegulatoryChangeDetected(source, change_type, significance, snapshot_ref)`
+- `SourceMonitoringFailed(source_url, error_type, fallback_used)`
+- `SnapshotCreated(source_url, blob_ref, integrity_hash, timestamp)`
+
+**CONSUMED BY:**
+- `regulatory/digest/` - Uses detected changes for digest generation
+- `compliance/obligations/` - Maps Tier-A changes to obligations
+
+## 🚀 FALLBACK STRATEGIES
+
+**Circuit Open (Parallel.ai Down):**
+```python
+# Use RSS feeds as degraded monitoring
+RSS_FALLBACKS = {
+    "nbb.be": "https://www.nbb.be/rss/news",
+    "fsma.be": "https://www.fsma.be/rss/news"
+}
+```
+
+**Source Unavailable:**
+```python
+# Use cached snapshots + manual upload option
+def activate_manual_mode(source: RegulatorySource):
+    """Allow manual content upload when source down."""
+```
+
+**SUCCESS CRITERIA:**
+- [ ] All Tier-A sources monitored within schedule
+- [ ] Snapshots immutable and integrity-verified
+- [ ] Circuit breaker protects from source failures
+- [ ] Multi-language content extraction works
+- [ ] Change significance correctly classified
