@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/incident_input/v1",
+  "title": "DORA Incident Input",
+  "description": "Input data for DORA incident classification per Article 18",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "clients_affected",
+    "downtime_minutes",
+    "services_critical"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the incident"
+    },
+    "clients_affected": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000000,
+      "description": "Number of clients affected by the incident"
+    },
+    "downtime_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 43200,
+      "description": "Duration of downtime in minutes (max 30 days)"
+    },
+    "services_critical": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "payment",
+          "trading",
+          "settlement",
+          "clearing",
+          "custody",
+          "lending",
+          "deposit",
+          "insurance",
+          "risk_management",
+          "compliance",
+          "reporting"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "description": "List of critical services affected"
+    },
+    "detected_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "UTC timestamp when incident was detected"
+    },
+    "confirmed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "UTC timestamp when incident was confirmed"
+    },
+    "occurred_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "UTC timestamp when incident actually occurred"
+    },
+    "reputational_impact": {
+      "type": ["string", "null"],
+      "enum": ["none", "low", "medium", "high", "critical", null],
+      "description": "Assessment of reputational impact"
+    },
+    "data_losses": {
+      "type": ["boolean", "null"],
+      "description": "Whether data losses occurred"
+    },
+    "economic_impact_eur": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1000000000,
+      "description": "Economic impact in EUR"
+    },
+    "geographical_spread": {
+      "type": ["string", "null"],
+      "enum": ["local", "regional", "national", "eu", "global", null],
+      "description": "Geographic scope of the incident"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "incident_id": "INC-2024-001",
+      "clients_affected": 1500,
+      "downtime_minutes": 120,
+      "services_critical": ["payment", "trading"],
+      "detected_at": "2024-03-15T08:30:00Z",
+      "confirmed_at": "2024-03-15T08:35:00Z",
+      "occurred_at": "2024-03-15T08:25:00Z",
+      "reputational_impact": "medium",
+      "data_losses": false,
+      "economic_impact_eur": 25000.50,
+      "geographical_spread": "national"
+    }
+  ]
+}

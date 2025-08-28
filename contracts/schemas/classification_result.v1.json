@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/classification_result/v1",
+  "title": "DORA Incident Classification Result",
+  "description": "Output from DORA incident classification with deadlines",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "severity",
+    "anchor_timestamp",
+    "anchor_source",
+    "classification_reasons",
+    "deadlines",
+    "requires_notification"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the incident"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "major", "significant", "minor", "no_report"],
+      "description": "DORA severity classification"
+    },
+    "anchor_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp used as calculation anchor"
+    },
+    "anchor_source": {
+      "type": "string",
+      "enum": ["detected_at", "confirmed_at", "occurred_at"],
+      "description": "Source of the anchor timestamp"
+    },
+    "classification_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "Reasons for the classification decision"
+    },
+    "deadlines": {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "severity",
+        "anchor_time_utc",
+        "anchor_time_brussels",
+        "initial_notification",
+        "final_report",
+        "dst_transitions_handled",
+        "calculation_confidence",
+        "timezone_used"
+      ],
+      "properties": {
+        "incident_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "significant", "minor", "no_report"]
+        },
+        "anchor_time_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Anchor timestamp in UTC"
+        },
+        "anchor_time_brussels": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Anchor timestamp in Europe/Brussels timezone"
+        },
+        "initial_notification": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DORA Article 19 initial notification deadline"
+        },
+        "intermediate_report": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Intermediate report deadline if applicable"
+        },
+        "final_report": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DORA Article 19 final report deadline"
+        },
+        "nbb_notification": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "NBB OneGate notification deadline"
+        },
+        "dst_transitions_handled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "DST transitions handled in calculation"
+        },
+        "calculation_confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence level of the calculation (0.0-1.0)"
+        },
+        "timezone_used": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]+/[A-Za-z_]+$",
+          "description": "IANA timezone used for calculations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "requires_notification": {
+      "type": "boolean",
+      "description": "Whether this incident requires notification"
+    },
+    "notification_deadline_hours": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 168,
+      "description": "Hours until notification deadline"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "incident_id": "INC-2024-001",
+      "severity": "major",
+      "anchor_timestamp": "2024-03-15T08:30:00Z",
+      "anchor_source": "detected_at",
+      "classification_reasons": [
+        "clients_affected >= 1000",
+        "critical services affected: payment, trading"
+      ],
+      "deadlines": {
+        "incident_id": "INC-2024-001",
+        "severity": "major",
+        "anchor_time_utc": "2024-03-15T08:30:00Z",
+        "anchor_time_brussels": "2024-03-15T09:30:00+01:00",
+        "initial_notification": "2024-03-15T12:30:00Z",
+        "intermediate_report": null,
+        "final_report": "2024-03-22T08:30:00Z",
+        "nbb_notification": "2024-03-15T12:30:00Z",
+        "dst_transitions_handled": [],
+        "calculation_confidence": 1.0,
+        "timezone_used": "Europe/Brussels"
+      },
+      "requires_notification": true,
+      "notification_deadline_hours": 4
+    }
+  ]
+}

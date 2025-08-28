@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/pii_violation/v1",
+  "title": "PII Boundary Violation",
+  "description": "Security event for detected PII in external API payloads",
+  "type": "object",
+  "required": [
+    "violation_type",
+    "detected_patterns",
+    "risk_score",
+    "payload_size",
+    "timestamp"
+  ],
+  "properties": {
+    "violation_type": {
+      "type": "string",
+      "enum": [
+        "belgian_rrn",
+        "belgian_vat",
+        "iban",
+        "email",
+        "phone",
+        "ip_address",
+        "credit_card"
+      ],
+      "description": "Type of PII violation detected"
+    },
+    "detected_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      },
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "List of patterns that triggered the violation (sanitized)"
+    },
+    "risk_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Risk assessment score from 0.0 (low) to 1.0 (critical)"
+    },
+    "payload_size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000,
+      "description": "Size of payload in bytes where PII was detected"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when violation was detected"
+    },
+    "context": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Optional context about where PII was found"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "violation_type": "email",
+      "detected_patterns": [
+        "***@company.com",
+        "support@***"
+      ],
+      "risk_score": 0.8,
+      "payload_size": 2048,
+      "timestamp": "2024-03-15T10:30:00Z",
+      "context": "parallel_search_request"
+    },
+    {
+      "violation_type": "belgian_rrn",
+      "detected_patterns": [
+        "XX.XX.XX-XXX.XX"
+      ],
+      "risk_score": 1.0,
+      "payload_size": 512,
+      "timestamp": "2024-03-15T11:45:00Z",
+      "context": "incident_enrichment_payload"
+    },
+    {
+      "violation_type": "iban",
+      "detected_patterns": [
+        "BE XX XXXX XXXX XXXX"
+      ],
+      "risk_score": 0.95,
+      "payload_size": 1024,
+      "timestamp": "2024-03-15T12:15:00Z",
+      "context": null
+    }
+  ]
+}
