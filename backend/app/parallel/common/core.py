@@ -44,61 +44,96 @@ def contains_pii(text: str) -> Tuple[bool, List[PIIMatch]]:
 
     # Belgian National Registry Number (Rijksregisternummer)
     # Format: YYMMDD-XXX-XX (11 digits with optional dashes)
-    rrn_pattern = r"\b\d{2}[./-]?\d{2}[./-]?\d{2}[./-]?\d{3}[./-]?\d{2}\b"
-    for match in re.finditer(rrn_pattern, text):
-        if _validate_belgian_rrn(match.group()):
-            matches.append(
-                PIIMatch(
-                    pattern_type="belgian_rrn",
-                    matched_text=match.group(),
-                    confidence=0.95,
-                    start_pos=match.start(),
-                    end_pos=match.end(),
+    # Enhanced pattern to catch more variations
+    rrn_patterns = [
+        r"\b\d{2}[./-]\d{2}[./-]\d{2}[./-]\d{3}[./-]\d{2}\b",  # With separators
+        r"\b\d{11}\b",  # Without separators
+        r"RRN[:\s]+\d{2}[./-]?\d{2}[./-]?\d{2}[./-]?\d{3}[./-]?\d{2}\b",  # With RRN prefix
+    ]
+    for pattern in rrn_patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            # Extract just the digits for validation
+            digits_only = re.sub(r"[^0-9]", "", match.group())
+            if len(digits_only) == 11 and _validate_belgian_rrn_relaxed(digits_only):
+                matches.append(
+                    PIIMatch(
+                        pattern_type="belgian_rrn",
+                        matched_text=match.group(),
+                        confidence=0.95,
+                        start_pos=match.start(),
+                        end_pos=match.end(),
+                    )
                 )
-            )
 
     # Belgian VAT Number (BTW/TVA)
     # Format: BE 0XXX.XXX.XXX or BE0XXXXXXXXX
-    vat_pattern = r"\bBE\s?0?\d{3}[.\s]?\d{3}[.\s]?\d{3}\b"
-    for match in re.finditer(vat_pattern, text, re.IGNORECASE):
-        if _validate_belgian_vat(match.group()):
-            matches.append(
-                PIIMatch(
-                    pattern_type="belgian_vat",
-                    matched_text=match.group(),
-                    confidence=0.9,
-                    start_pos=match.start(),
-                    end_pos=match.end(),
+    # Enhanced to catch more variations
+    vat_patterns = [
+        r"\bBE\s?0\d{3}[.\s]?\d{3}[.\s]?\d{3}\b",  # Standard format
+        r"\bBE0\d{9}\b",  # Compact format  
+        r"VAT[:\s]+BE\s?0\d{3}[.\s]?\d{3}[.\s]?\d{3}\b",  # With VAT prefix
+        r"BTW[:\s]+BE\s?0\d{3}[.\s]?\d{3}[.\s]?\d{3}\b",  # With BTW prefix
+    ]
+    for pattern in vat_patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            # Extract digits for validation
+            digits_only = re.sub(r"[^0-9]", "", match.group())
+            if len(digits_only) == 10 and digits_only.startswith('0') and _validate_belgian_vat_relaxed(digits_only):
+                matches.append(
+                    PIIMatch(
+                        pattern_type="belgian_vat",
+                        matched_text=match.group(),
+                        confidence=0.9,
+                        start_pos=match.start(),
+                        end_pos=match.end(),
+                    )
                 )
-            )
 
     # IBAN (International Bank Account Number)
     # Format: Country code (2) + check digits (2) + account number (up to 30)
-    iban_pattern = r"\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b"
-    for match in re.finditer(iban_pattern, text):
-        if _validate_iban_checksum(match.group()):
+    # Enhanced to handle spaces and various formats
+    iban_patterns = [
+        r"\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b",  # Standard compact format
+        r"\b[A-Z]{2}\d{2}\s[A-Z0-9\s]{4,34}\b",  # With spaces
+        r"\bIBAN[:\s]+[A-Z]{2}\d{2}[A-Z0-9\s]{4,34}\b",  # With IBAN prefix
+        r"\bAccount[:\s]+[A-Z]{2}\d{2}[A-Z0-9\s]{4,34}\b",  # With Account prefix
+    ]
+    for pattern in iban_patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            # Clean IBAN for validation (remove spaces and non-alphanumeric)
+            clean_iban = re.sub(r'[^A-Z0-9]', '', match.group().upper())
+            # Find the actual IBAN part (starts with 2 letters + 2 digits)
+            iban_match = re.search(r'[A-Z]{2}\d{2}[A-Z0-9]{4,30}', clean_iban)
+            if iban_match and _validate_iban_checksum(iban_match.group()):
+                matches.append(
+                    PIIMatch(
+                        pattern_type="iban",
+                        matched_text=match.group(),
+                        confidence=0.95,
+                        start_pos=match.start(),
+                        end_pos=match.end(),
+                    )
+                )
+
+    # Email addresses (comprehensive pattern including obfuscated)
+    email_patterns = [
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Standard email
+        r"\b[A-Za-z0-9._%+-]+\s+at\s+[A-Za-z0-9.-]+\s+dot\s+[A-Za-z]{2,}\b",  # Obfuscated: user at domain dot com
+        r"\b[A-Za-z0-9._%+-]+\s*\[at\]\s*[A-Za-z0-9.-]+\s*\[dot\]\s*[A-Za-z]{2,}\b",  # Bracketed: user[at]domain[dot]com
+        r"\b[A-Za-z0-9._%+-]+\s*\(at\)\s*[A-Za-z0-9.-]+\s*\(dot\)\s*[A-Za-z]{2,}\b",  # Parentheses
+        r"\b[A-Za-z0-9._%-]+\s+AT\s+[A-Za-z0-9.-]+\s+DOT\s+[A-Za-z]{2,}\b",  # Uppercase
+    ]
+    for pattern in email_patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
             matches.append(
                 PIIMatch(
-                    pattern_type="iban",
+                    pattern_type="email",
                     matched_text=match.group(),
-                    confidence=0.95,
+                    confidence=0.98,
                     start_pos=match.start(),
                     end_pos=match.end(),
                 )
             )
-
-    # Email addresses (comprehensive pattern)
-    email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-    for match in re.finditer(email_pattern, text):
-        matches.append(
-            PIIMatch(
-                pattern_type="email",
-                matched_text=match.group(),
-                confidence=0.98,
-                start_pos=match.start(),
-                end_pos=match.end(),
-            )
-        )
 
     # Phone numbers (international and Belgian formats)
     # Belgian: +32 X XX XX XX XX, 0X XX XX XX XX
@@ -185,6 +220,25 @@ def _validate_belgian_rrn(rrn: str) -> bool:
         return check_digits == (97 - remainder_19)
 
 
+def _validate_belgian_rrn_relaxed(digits: str) -> bool:
+    """Relaxed Belgian RRN validation - focus on structure, not strict checksum."""
+    if len(digits) != 11 or not digits.isdigit():
+        return False
+
+    # Basic date validation (YYMMDD)
+    year = int(digits[:2])
+    month = int(digits[2:4])
+    day = int(digits[4:6])
+
+    # Relaxed date validation
+    if month < 1 or month > 12 or day < 1 or day > 31:
+        return False
+
+    # For security purposes, assume any 11-digit number with valid date is RRN
+    # Better to over-detect than under-detect PII
+    return True
+
+
 def _validate_belgian_vat(vat: str) -> bool:
     """Validate Belgian VAT number format and checksum."""
     # Extract digits only
@@ -202,6 +256,20 @@ def _validate_belgian_vat(vat: str) -> bool:
     check = int(digits[8:10])
 
     return check == (97 - (base % 97))
+
+
+def _validate_belgian_vat_relaxed(digits: str) -> bool:
+    """Relaxed Belgian VAT validation - structure-focused."""
+    if len(digits) != 10 or not digits.isdigit():
+        return False
+
+    # First digit must be 0 for Belgian VAT
+    if digits[0] != "0":
+        return False
+
+    # For security purposes, assume any 10-digit number starting with 0 is Belgian VAT
+    # Better to over-detect than under-detect PII
+    return True
 
 
 def _validate_iban_checksum(iban: str) -> bool:
