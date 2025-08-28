@@ -1,0 +1,147 @@
+# DORA Article 18 Classification Rules
+# Belgian RegOps Platform - Incident Classification Thresholds
+
+dora_classification:
+  version: "1.0"
+  effective_date: "2025-01-17"
+  regulation: "EU Regulation 2022/2554 (DORA)"
+  article: "Article 18 - Classification of ICT-related incidents and cyber threats"
+  
+  severity_levels:
+    critical:
+      description: "Incidents requiring immediate escalation and 1-hour reporting"
+      initial_notification_hours: 1
+      intermediate_report_hours: 24
+      final_report_days: 14
+      criteria:
+        - "Immediate threat to financial stability"
+        - "Complete system failure affecting all clients"
+        - "Security breach with confirmed data exfiltration"
+    
+    major:
+      description: "Incidents with significant operational impact requiring 4-hour reporting"
+      initial_notification_hours: 4
+      intermediate_report_hours: 72
+      final_report_days: 14
+      criteria:
+        - "downtime_minutes >= 60 AND services_critical.length >= 1"
+        - "clients_affected >= 1000"
+        - "'payment' IN services_critical AND downtime_minutes >= 30"
+      examples:
+        - "Trading system down for 60+ minutes"
+        - "Payment processing affecting 1000+ clients"
+        - "Core banking services unavailable for 1+ hour"
+    
+    significant:
+      description: "Incidents with moderate impact requiring 24-hour reporting"
+      initial_notification_hours: 24
+      intermediate_report_hours: null
+      final_report_days: 14
+      criteria:
+        - "100 <= clients_affected < 1000"
+        - "15 <= downtime_minutes < 60 AND services_critical.length >= 1"
+      examples:
+        - "Mobile app outage affecting 500 clients for 30 minutes"
+        - "ATM network partial failure for 45 minutes"
+    
+    minor:
+      description: "Incidents below significant thresholds but still requiring DORA reporting"
+      initial_notification_hours: 24
+      intermediate_report_hours: null
+      final_report_days: 14
+      criteria:
+        - "clients_affected > 0 OR downtime_minutes > 0"
+        - "Below significant incident thresholds"
+      examples:
+        - "Website slowdown affecting 50 clients for 10 minutes"
+        - "Single ATM malfunction"
+    
+    no_report:
+      description: "Incidents below DORA reporting thresholds"
+      initial_notification_hours: null
+      intermediate_report_hours: null
+      final_report_days: null
+      criteria:
+        - "clients_affected == 0 AND downtime_minutes == 0"
+      examples:
+        - "Internal test failure with no client impact"
+        - "Planned maintenance with no downtime"
+
+  critical_services:
+    description: "Services considered critical for DORA classification"
+    services:
+      - "payment"
+      - "trading"
+      - "clearing"
+      - "settlement"
+      - "custody"
+      - "lending" 
+      - "deposit"
+      - "authentication"
+      - "authorization"
+      - "customer_onboarding"
+      - "risk_management"
+      - "compliance_reporting"
+    
+    payment_services:
+      description: "Payment-related services with special 30-minute threshold"
+      services:
+        - "payment"
+        - "card_processing" 
+        - "wire_transfer"
+        - "direct_debit"
+        - "instant_payment"
+
+  timezone_handling:
+    primary_timezone: "Europe/Brussels"
+    description: "All deadline calculations use Brussels timezone for Belgian regulators"
+    dst_transitions:
+      spring_forward:
+        description: "Last Sunday in March, 02:00 → 03:00 (CET → CEST)"
+        handling: "Times in 02:00-03:00 gap are invalid, suggest 03:XX equivalent"
+      fall_back:
+        description: "Last Sunday in October, 03:00 → 02:00 (CEST → CET)" 
+        handling: "Times in 02:00-03:00 overlap use fold parameter (0=first, 1=second)"
+    
+    business_hours:
+      description: "Belgian business hours for notification scheduling"
+      weekdays: "09:00-17:00 CET/CEST"
+      weekends: "Notifications may be delayed but deadlines are absolute"
+      holidays: "Following Belgian federal holidays"
+
+  anchor_timestamp_priority:
+    description: "Fallback chain for determining incident start time"
+    priority_order:
+      1: "detected_at"
+      2: "confirmed_at" 
+      3: "occurred_at"
+    validation:
+      - "Must be timezone-aware datetime"
+      - "Cannot fall in DST spring-forward gap"
+      - "Must handle DST fall-back ambiguity with fold parameter"
+
+  nbb_integration:
+    description: "National Bank of Belgium specific requirements"
+    onegate_portal:
+      url: "https://onegate.nbb.be"
+      schema_version: "dora_v2.xsd"
+      submission_format: "XML with embedded PDF attachments"
+    notification_timeline:
+      major_incidents: "Same as DORA initial notification (4 hours)"
+      significant_incidents: "Same as DORA initial notification (24 hours)"
+      xml_validation: "Required before submission"
+      
+  audit_requirements:
+    description: "Audit trail and evidence requirements"
+    deterministic_classification: "Same input must always produce same classification"
+    timestamp_precision: "Millisecond precision required"
+    dst_handling_evidence: "Must record all DST transitions handled"
+    calculation_confidence: "Must be 1.0 (100% deterministic)"
+    evidence_retention: "7 years immutable storage"
+
+  performance_sla:
+    classification_time: "< 10ms per incident"
+    deadline_calculation: "< 50ms per incident"  
+    database_operations: "< 100ms per operation"
+    event_publishing: "< 10ms per event"
+    dst_validation: "< 5ms per timestamp"
