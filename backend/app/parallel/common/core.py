@@ -9,6 +9,7 @@ against PII leaks to external APIs like Parallel.ai.
 """
 
 import re
+from datetime import datetime, timedelta
 from typing import List, Tuple
 from dataclasses import dataclass
 
@@ -285,6 +286,139 @@ def should_open_circuit(failures: int, threshold: int) -> bool:
     MUST be pure function - no side effects.
     """
     return failures >= threshold
+
+
+def should_activate_degraded_mode(
+    failure_count: int, 
+    failure_threshold: int,
+    last_failure_time: datetime,
+    current_time: datetime,
+    degraded_mode_delay_seconds: int = 60
+) -> bool:
+    """
+    Determine if degraded mode should be activated.
+    
+    Args:
+        failure_count: Number of consecutive failures
+        failure_threshold: Threshold for circuit breaker
+        last_failure_time: Time of last failure
+        current_time: Current time
+        degraded_mode_delay_seconds: Delay before activating degraded mode
+        
+    Returns:
+        True if degraded mode should be activated
+        
+    MUST be pure function - no side effects.
+    """
+    if failure_count < failure_threshold:
+        return False
+        
+    # Check if enough time has passed since last failure
+    time_since_failure = (current_time - last_failure_time).total_seconds()
+    return time_since_failure >= degraded_mode_delay_seconds
+
+
+def calculate_service_health_score(
+    consecutive_successes: int,
+    consecutive_failures: int,
+    response_time_ms: int,
+    expected_response_time_ms: int = 1000
+) -> float:
+    """
+    Calculate service health score (0.0 to 1.0).
+    
+    Args:
+        consecutive_successes: Number of consecutive successful calls
+        consecutive_failures: Number of consecutive failed calls
+        response_time_ms: Latest response time
+        expected_response_time_ms: Expected normal response time
+        
+    Returns:
+        Health score from 0.0 (unhealthy) to 1.0 (healthy)
+        
+    MUST be deterministic.
+    """
+    if consecutive_failures > 0:
+        # Recent failures reduce health score
+        failure_penalty = min(1.0, consecutive_failures / 10.0)
+        base_score = max(0.0, 1.0 - failure_penalty)
+    else:
+        # No recent failures
+        base_score = 1.0
+        
+    # Success bonus
+    if consecutive_successes > 0:
+        success_bonus = min(0.2, consecutive_successes / 50.0)
+        base_score = min(1.0, base_score + success_bonus)
+        
+    # Response time factor
+    if response_time_ms > 0:
+        response_factor = min(1.0, expected_response_time_ms / response_time_ms)
+        base_score *= response_factor
+        
+    return max(0.0, min(1.0, base_score))
+
+
+def estimate_recovery_time(
+    failure_count: int,
+    last_failure_time: datetime,
+    current_time: datetime,
+    base_recovery_minutes: int = 10
+) -> datetime:
+    """
+    Estimate when service might recover based on failure patterns.
+    
+    Args:
+        failure_count: Number of consecutive failures
+        last_failure_time: Time of last failure
+        current_time: Current time
+        base_recovery_minutes: Base recovery time in minutes
+        
+    Returns:
+        Estimated recovery datetime
+        
+    MUST be deterministic.
+    """
+    # Exponential backoff based on failure count
+    backoff_multiplier = min(8, 2 ** (failure_count - 1))
+    estimated_minutes = base_recovery_minutes * backoff_multiplier
+    
+    # Add time since last failure
+    time_since_failure = (current_time - last_failure_time).total_seconds() / 60
+    remaining_minutes = max(0, estimated_minutes - time_since_failure)
+    
+    return current_time + timedelta(minutes=remaining_minutes)
+
+
+def calculate_degraded_coverage_estimate(active_fallbacks: list[str]) -> float:
+    """
+    Estimate coverage percentage when running in degraded mode.
+    
+    Args:
+        active_fallbacks: List of active fallback systems
+        
+    Returns:
+        Coverage estimate from 0.0 to 1.0
+        
+    MUST be deterministic.
+    """
+    if not active_fallbacks:
+        return 0.0
+        
+    coverage_scores = {
+        'rss_feeds': 0.6,      # RSS provides 60% of normal coverage
+        'cache': 0.4,          # Cache provides 40% coverage for recent data
+        'manual_input': 0.2,   # Manual processes provide 20% coverage
+        'static_data': 0.1     # Static data provides minimal coverage
+    }
+    
+    total_coverage = 0.0
+    for fallback in active_fallbacks:
+        coverage = coverage_scores.get(fallback, 0.1)
+        # Diminishing returns for multiple fallbacks
+        total_coverage += coverage * (1.0 - total_coverage)
+        
+    return min(1.0, total_coverage)
 
 
 def calculate_risk_score(data: dict) -> float:

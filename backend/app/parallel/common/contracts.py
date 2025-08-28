@@ -16,6 +16,7 @@ class CircuitBreakerState(Enum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
+    DEGRADED = "degraded"  # New state for degraded mode operations
 
 
 class PIIViolationType(Enum):
@@ -68,6 +69,14 @@ class CircuitBreakerStatus:
     total_requests: int
     successful_requests: int
     failed_requests: int
+    degraded_mode_active: bool = False
+    fallback_systems_active: List[str] = None
+    estimated_recovery_time: Optional[datetime] = None
+    
+    def __post_init__(self):
+        """Set default empty list for fallback systems."""
+        if self.fallback_systems_active is None:
+            object.__setattr__(self, 'fallback_systems_active', [])
 
 
 class PIIDetector(Protocol):
@@ -131,3 +140,43 @@ class PIIGuardMetrics:
     average_check_time_ms: float
     patterns_detected: dict[PIIViolationType, int]
     last_violation_time: Optional[datetime] = None
+
+
+@dataclass(frozen=True)
+class DegradedModeStatus:
+    """Status information for degraded mode operations."""
+    
+    active: bool
+    activated_at: Optional[datetime]
+    trigger_reason: str
+    active_fallbacks: List[str]
+    estimated_coverage_percentage: float
+    recovery_detection_active: bool
+    automatic_recovery: bool = True
+    manual_override: bool = False
+
+
+@dataclass(frozen=True)
+class ServiceHealthStatus:
+    """Health status for external service monitoring."""
+    
+    service_name: str
+    is_healthy: bool
+    last_check_time: datetime
+    response_time_ms: Optional[int]
+    error_message: Optional[str] = None
+    consecutive_failures: int = 0
+    consecutive_successes: int = 0
+    health_score: float = 1.0  # 0.0 to 1.0
+
+
+@dataclass(frozen=True)
+class DegradedModeConfig:
+    """Configuration for degraded mode behavior."""
+    
+    auto_activation_enabled: bool = True
+    fallback_activation_delay_seconds: int = 60
+    recovery_check_interval_seconds: int = 300  # 5 minutes
+    max_degraded_duration_hours: int = 24
+    coverage_threshold_percentage: float = 0.6  # Minimum acceptable coverage
+    health_check_timeout_seconds: int = 10

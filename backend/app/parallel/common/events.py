@@ -172,3 +172,111 @@ class ParallelCallFailed:
     retry_count: int = 0
     will_retry: bool = False
     context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class DegradedModeActivated:
+    """
+    Event emitted when degraded mode is activated.
+    
+    Indicates the system has switched to fallback operations.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    trigger_service: str
+    trigger_reason: str
+    activated_fallbacks: List[str]
+    estimated_coverage_percentage: float
+    expected_recovery_time: Optional[datetime] = None
+    automatic_activation: bool = True
+    context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class DegradedModeDeactivated:
+    """
+    Event emitted when degraded mode is deactivated.
+    
+    Indicates return to normal operations.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    degraded_duration_seconds: int
+    recovery_trigger: str
+    operations_during_degraded: int
+    successful_recovery: bool = True
+    context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class ServiceHealthCheckCompleted:
+    """
+    Event emitted when service health check completes.
+    
+    Used for monitoring service recovery and health status.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    service_name: str
+    health_check_passed: bool
+    response_time_ms: Optional[int]
+    health_score: float
+    consecutive_successes: int
+    consecutive_failures: int
+    context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class FallbackSystemActivated:
+    """
+    Event emitted when a fallback system is activated.
+    
+    Tracks which fallback systems are being used during degraded mode.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    fallback_system: str  # "rss_feeds", "cache", "manual_input"
+    activation_reason: str
+    estimated_coverage: float
+    expected_performance_impact: float
+    context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class RecoveryAttemptStarted:
+    """
+    Event emitted when automatic recovery attempt starts.
+    
+    Tracks recovery attempts and their outcomes.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    service_name: str
+    attempt_number: int
+    recovery_strategy: str
+    estimated_time_to_recovery: Optional[int] = None
+    context: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class RecoveryAttemptCompleted:
+    """
+    Event emitted when recovery attempt completes.
+    
+    Indicates success or failure of recovery attempts.
+    """
+    
+    event_id: str
+    timestamp: datetime
+    service_name: str
+    attempt_number: int
+    recovery_successful: bool
+    actual_recovery_time_ms: int
+    error_message: Optional[str] = None
+    next_attempt_time: Optional[datetime] = None
+    context: Optional[Dict[str, Any]] = None

@@ -17,13 +17,24 @@ try:
 except ImportError:
     redis = None
 
-from .core import contains_pii, should_open_circuit, calculate_risk_score
+from .core import (
+    contains_pii, 
+    should_open_circuit, 
+    calculate_risk_score,
+    should_activate_degraded_mode,
+    calculate_service_health_score,
+    estimate_recovery_time,
+    calculate_degraded_coverage_estimate
+)
 from .contracts import (
     PIIBoundaryViolation,
     CircuitBreakerState,
     CircuitBreakerStatus,
     CircuitBreakerConfig,
     PIIViolationType,
+    DegradedModeStatus,
+    DegradedModeConfig,
+    ServiceHealthStatus
 )
 from .events import (
     PIIViolationDetected,
@@ -32,6 +43,12 @@ from .events import (
     CircuitBreakerHalfOpen,
     ParallelCallCompleted,
     ParallelCallFailed,
+    DegradedModeActivated,
+    DegradedModeDeactivated,
+    ServiceHealthCheckCompleted,
+    FallbackSystemActivated,
+    RecoveryAttemptStarted,
+    RecoveryAttemptCompleted
 )
 
 logger = logging.getLogger(__name__)
@@ -67,10 +84,12 @@ class PIIBoundaryGuard:
         self,
         redis_client: Optional[redis.Redis] = None,
         config: Optional[CircuitBreakerConfig] = None,
+        degraded_config: Optional[DegradedModeConfig] = None,
         event_publisher: Optional[Callable] = None,
     ):
         self.redis = redis_client
         self.config = config or CircuitBreakerConfig()
+        self.degraded_config = degraded_config or DegradedModeConfig()
         self.event_publisher = event_publisher or self._default_event_publisher
 
     async def assert_parallel_safe(
@@ -434,6 +453,238 @@ class PIIBoundaryGuard:
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             return None
+
+    async def get_degraded_mode_status(self) -> DegradedModeStatus:
+        """Get current degraded mode status."""
+        if not self.redis:
+            return DegradedModeStatus(
+                active=False,
+                activated_at=None,
+                trigger_reason="",
+                active_fallbacks=[],
+                estimated_coverage_percentage=1.0,
+                recovery_detection_active=False
+            )
+            
+        try:
+            key_prefix = f"{self.config.redis_key_prefix}:degraded_mode"
+            
+            pipe = self.redis.pipeline()
+            pipe.get(f"{key_prefix}:active")
+            pipe.get(f"{key_prefix}:activated_at")
+            pipe.get(f"{key_prefix}:trigger_reason")
+            pipe.get(f"{key_prefix}:active_fallbacks")
+            pipe.get(f"{key_prefix}:coverage_percentage")
+            
+            results = await pipe.execute()
+            
+            active = bool(results[0])
+            activated_at_str = results[1]
+            trigger_reason = results[2] or ""
+            fallbacks_str = results[3] or "[]"
+            coverage = float(results[4] or 1.0)
+            
+            activated_at = None
+            if activated_at_str:
+                try:
+                    activated_at = datetime.fromisoformat(activated_at_str.decode() if isinstance(activated_at_str, bytes) else activated_at_str)
+                except ValueError:
+                    pass
+                    
+            import json
+            active_fallbacks = json.loads(fallbacks_str.decode() if isinstance(fallbacks_str, bytes) else fallbacks_str)
+            
+            return DegradedModeStatus(
+                active=active,
+                activated_at=activated_at,
+                trigger_reason=trigger_reason.decode() if isinstance(trigger_reason, bytes) else trigger_reason,
+                active_fallbacks=active_fallbacks,
+                estimated_coverage_percentage=coverage,
+                recovery_detection_active=True  # Always active when Redis available
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to get degraded mode status: {e}")
+            return DegradedModeStatus(
+                active=False,
+                activated_at=None,
+                trigger_reason="",
+                active_fallbacks=[],
+                estimated_coverage_percentage=1.0,
+                recovery_detection_active=False
+            )
+    
+    async def activate_degraded_mode(
+        self,
+        trigger_service: str,
+        trigger_reason: str,
+        active_fallbacks: List[str]
+    ) -> None:
+        """Activate degraded mode with specified fallback systems."""
+        current_time = datetime.utcnow()
+        coverage = calculate_degraded_coverage_estimate(active_fallbacks)
+        
+        if self.redis:
+            try:
+                key_prefix = f"{self.config.redis_key_prefix}:degraded_mode"
+                
+                pipe = self.redis.pipeline()
+                pipe.set(f"{key_prefix}:active", True)
+                pipe.set(f"{key_prefix}:activated_at", current_time.isoformat())
+                pipe.set(f"{key_prefix}:trigger_reason", trigger_reason)
+                pipe.set(f"{key_prefix}:coverage_percentage", coverage)
+                
+                import json
+                pipe.set(f"{key_prefix}:active_fallbacks", json.dumps(active_fallbacks))
+                
+                await pipe.execute()
+                
+            except Exception as e:
+                logger.error(f"Failed to store degraded mode status: {e}")
+        
+        # Emit degraded mode activation event
+        event = DegradedModeActivated(
+            event_id=str(uuid.uuid4()),
+            timestamp=current_time,
+            trigger_service=trigger_service,
+            trigger_reason=trigger_reason,
+            activated_fallbacks=active_fallbacks,
+            estimated_coverage_percentage=coverage,
+            expected_recovery_time=estimate_recovery_time(
+                3, current_time, current_time  # Assume circuit opened
+            )
+        )
+        await self.event_publisher(event)
+        
+        # Activate each fallback system
+        for fallback in active_fallbacks:
+            fallback_event = FallbackSystemActivated(
+                event_id=str(uuid.uuid4()),
+                timestamp=current_time,
+                fallback_system=fallback,
+                activation_reason=trigger_reason,
+                estimated_coverage=coverage,
+                expected_performance_impact=0.3  # 30% performance impact
+            )
+            await self.event_publisher(fallback_event)
+        
+        logger.info(f"Degraded mode activated: {trigger_reason} (coverage: {coverage:.1%})")
+    
+    async def deactivate_degraded_mode(
+        self,
+        recovery_trigger: str = "automatic_recovery",
+        operations_count: int = 0
+    ) -> None:
+        """Deactivate degraded mode and return to normal operations."""
+        current_time = datetime.utcnow()
+        
+        # Get current status for event
+        status = await self.get_degraded_mode_status()
+        
+        if self.redis:
+            try:
+                key_prefix = f"{self.config.redis_key_prefix}:degraded_mode"
+                
+                pipe = self.redis.pipeline()
+                pipe.delete(f"{key_prefix}:active")
+                pipe.delete(f"{key_prefix}:activated_at")
+                pipe.delete(f"{key_prefix}:trigger_reason")
+                pipe.delete(f"{key_prefix}:active_fallbacks")
+                pipe.delete(f"{key_prefix}:coverage_percentage")
+                
+                await pipe.execute()
+                
+            except Exception as e:
+                logger.error(f"Failed to clear degraded mode status: {e}")
+        
+        # Calculate degraded duration
+        degraded_duration = 0
+        if status.activated_at:
+            degraded_duration = int((current_time - status.activated_at).total_seconds())
+        
+        # Emit deactivation event
+        event = DegradedModeDeactivated(
+            event_id=str(uuid.uuid4()),
+            timestamp=current_time,
+            degraded_duration_seconds=degraded_duration,
+            recovery_trigger=recovery_trigger,
+            operations_during_degraded=operations_count,
+            successful_recovery=True
+        )
+        await self.event_publisher(event)
+        
+        logger.info(f"Degraded mode deactivated after {degraded_duration}s")
+    
+    async def check_service_health(
+        self,
+        service_name: str,
+        health_check_func: Optional[Callable] = None
+    ) -> ServiceHealthStatus:
+        """Check health of external service."""
+        current_time = datetime.utcnow()
+        
+        if not health_check_func:
+            # Default health check - just check circuit breaker status
+            circuit_status = await self.get_circuit_status(service_name)
+            is_healthy = circuit_status.state == CircuitBreakerState.CLOSED
+            
+            health_score = calculate_service_health_score(
+                circuit_status.successful_requests,
+                circuit_status.failed_requests,
+                1000  # Assume 1s response time if no data
+            )
+            
+            status = ServiceHealthStatus(
+                service_name=service_name,
+                is_healthy=is_healthy,
+                last_check_time=current_time,
+                response_time_ms=None,
+                consecutive_failures=circuit_status.failure_count,
+                consecutive_successes=max(0, circuit_status.successful_requests - circuit_status.failed_requests),
+                health_score=health_score
+            )
+            
+        else:
+            # Use custom health check function
+            try:
+                start_time = current_time
+                health_result = await health_check_func()
+                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                
+                status = ServiceHealthStatus(
+                    service_name=service_name,
+                    is_healthy=health_result.get('healthy', False),
+                    last_check_time=current_time,
+                    response_time_ms=response_time,
+                    error_message=health_result.get('error'),
+                    health_score=health_result.get('score', 0.0)
+                )
+                
+            except Exception as e:
+                status = ServiceHealthStatus(
+                    service_name=service_name,
+                    is_healthy=False,
+                    last_check_time=current_time,
+                    response_time_ms=None,
+                    error_message=str(e),
+                    consecutive_failures=1,
+                    health_score=0.0
+                )
+        
+        # Emit health check event
+        health_event = ServiceHealthCheckCompleted(
+            event_id=str(uuid.uuid4()),
+            timestamp=current_time,
+            service_name=service_name,
+            health_check_passed=status.is_healthy,
+            response_time_ms=status.response_time_ms,
+            health_score=status.health_score,
+            consecutive_successes=status.consecutive_successes,
+            consecutive_failures=status.consecutive_failures
+        )
+        await self.event_publisher(health_event)
+        
+        return status
 
     async def _default_event_publisher(self, event) -> None:
         """Default event publisher that logs events."""
