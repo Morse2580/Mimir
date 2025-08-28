@@ -8,17 +8,18 @@ when violations are detected or circuit breaker state changes.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from .contracts import PIIViolationType, CircuitBreakerState
+from .contracts import PIIViolationType
 
 
 @dataclass(frozen=True)
 class PIIViolationDetected:
     """
     Event emitted when PII is detected in data bound for external APIs.
-    
+
     This is a critical security event that should trigger alerts
     and be logged in the audit trail.
     """
+
     event_id: str
     timestamp: datetime
     violation_type: PIIViolationType
@@ -29,7 +30,7 @@ class PIIViolationDetected:
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
-    
+
     def __post_init__(self):
         """Validate event data on creation."""
         if self.risk_score < 0.0 or self.risk_score > 1.0:
@@ -42,10 +43,11 @@ class PIIViolationDetected:
 class CircuitBreakerOpened:
     """
     Event emitted when circuit breaker opens due to failures.
-    
+
     Indicates that external API calls are being blocked and
     the system has entered degraded mode.
     """
+
     event_id: str
     timestamp: datetime
     service_name: str
@@ -60,10 +62,11 @@ class CircuitBreakerOpened:
 class CircuitBreakerClosed:
     """
     Event emitted when circuit breaker closes after recovery.
-    
+
     Indicates that the service has recovered and external API
     calls are functioning normally again.
     """
+
     event_id: str
     timestamp: datetime
     service_name: str
@@ -76,10 +79,11 @@ class CircuitBreakerClosed:
 class CircuitBreakerHalfOpen:
     """
     Event emitted when circuit breaker enters half-open state.
-    
+
     Indicates that the system is testing if the external service
     has recovered by allowing limited requests through.
     """
+
     event_id: str
     timestamp: datetime
     service_name: str
@@ -91,10 +95,11 @@ class CircuitBreakerHalfOpen:
 class PIIBoundaryBypass:
     """
     Event emitted when there's an attempt to bypass PII boundary checks.
-    
+
     This is a critical security event that indicates potential
     malicious activity or system compromise.
     """
+
     event_id: str
     timestamp: datetime
     attempted_bypass_method: str
@@ -109,10 +114,11 @@ class PIIBoundaryBypass:
 class CostLimitApproached:
     """
     Event emitted when Parallel.ai API costs approach the monthly limit.
-    
+
     This allows for proactive cost management and prevents
     unexpected service shutdowns.
     """
+
     event_id: str
     timestamp: datetime
     current_cost_euros: float
@@ -120,7 +126,7 @@ class CostLimitApproached:
     percentage_used: float
     estimated_days_remaining: int
     context: Optional[Dict[str, Any]] = None
-    
+
     def __post_init__(self):
         """Validate cost data on creation."""
         if self.current_cost_euros < 0:
@@ -135,9 +141,10 @@ class CostLimitApproached:
 class ParallelCallCompleted:
     """
     Event emitted when a Parallel.ai API call completes successfully.
-    
+
     Used for tracking usage metrics and cost monitoring.
     """
+
     event_id: str
     timestamp: datetime
     endpoint: str
@@ -152,9 +159,10 @@ class ParallelCallCompleted:
 class ParallelCallFailed:
     """
     Event emitted when a Parallel.ai API call fails.
-    
+
     Used for circuit breaker logic and error monitoring.
     """
+
     event_id: str
     timestamp: datetime
     endpoint: str

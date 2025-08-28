@@ -1,6 +1,7 @@
 """
 Cost tracking contracts and type definitions.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -10,9 +11,10 @@ from enum import Enum
 
 class BudgetStatus(Enum):
     """Budget status levels."""
+
     NORMAL = "normal"
     WARNING = "warning"  # 50%
-    ALERT = "alert"      # 80%
+    ALERT = "alert"  # 80%
     ESCALATION = "escalation"  # 90%
     KILL_SWITCH = "kill_switch"  # 95%
 
@@ -20,6 +22,7 @@ class BudgetStatus(Enum):
 @dataclass(frozen=True)
 class SpendLimits:
     """Budget spend limits configuration."""
+
     monthly_cap_eur: Decimal
     kill_switch_threshold_percent: Decimal
     warning_threshold_percent: Decimal = Decimal("50")
@@ -30,6 +33,7 @@ class SpendLimits:
 @dataclass(frozen=True)
 class CostEntry:
     """Record of API cost incurred."""
+
     id: Optional[str]
     tenant: str
     api_type: str  # "search" or "task"
@@ -44,6 +48,7 @@ class CostEntry:
 @dataclass(frozen=True)
 class BudgetState:
     """Current budget state."""
+
     tenant: str
     current_spend_eur: Decimal
     monthly_cap_eur: Decimal
@@ -56,6 +61,7 @@ class BudgetState:
 @dataclass(frozen=True)
 class PreFlightCheck:
     """Result of pre-flight budget check."""
+
     allowed: bool
     current_spend_eur: Decimal
     proposed_cost_eur: Decimal
@@ -68,6 +74,7 @@ class PreFlightCheck:
 @dataclass(frozen=True)
 class BudgetAlert:
     """Budget alert information."""
+
     tenant: str
     threshold_percent: Decimal
     current_spend_eur: Decimal

@@ -1,6 +1,7 @@
 """
 Cost tracking domain events.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -12,6 +13,7 @@ from .contracts import BudgetStatus
 @dataclass(frozen=True)
 class BudgetThresholdExceeded:
     """Emitted when budget threshold is crossed."""
+
     tenant: str
     threshold_percent: Decimal
     current_spend_eur: Decimal
@@ -19,11 +21,12 @@ class BudgetThresholdExceeded:
     previous_status: BudgetStatus
     new_status: BudgetStatus
     timestamp: datetime
-    
-    
+
+
 @dataclass(frozen=True)
 class KillSwitchActivated:
     """Emitted when kill switch is activated."""
+
     tenant: str
     current_spend_eur: Decimal
     proposed_cost_eur: Decimal
@@ -31,11 +34,12 @@ class KillSwitchActivated:
     kill_switch_threshold_percent: Decimal
     timestamp: datetime
     blocked_request_id: Optional[str] = None
-    
+
 
 @dataclass(frozen=True)
 class CostRecorded:
     """Emitted when API cost is recorded."""
+
     tenant: str
     api_type: str
     processor: str
@@ -50,6 +54,7 @@ class CostRecorded:
 @dataclass(frozen=True)
 class BudgetReset:
     """Emitted when monthly budget is reset."""
+
     tenant: str
     previous_spend_eur: Decimal
     reset_timestamp: datetime
@@ -59,6 +64,7 @@ class BudgetReset:
 @dataclass(frozen=True)
 class KillSwitchOverridden:
     """Emitted when kill switch is manually overridden."""
+
     tenant: str
     overridden_by: str  # user ID
     reason: str

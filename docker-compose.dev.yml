@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Redis for cost tracking and circuit breaker state
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL for audit trails and evidence ledger
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: regops_dev
+      POSTGRES_USER: regops
+      POSTGRES_PASSWORD: regops_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U regops -d regops_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # RegOps Application (development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/venv  # Exclude venv from volume mount
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://regops:regops_dev_password@postgres:5432/regops_dev
+      - DEPLOY_ENV=LOCAL
+      - PARALLEL_ENABLED=true
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  redis_data:
+  postgres_data:

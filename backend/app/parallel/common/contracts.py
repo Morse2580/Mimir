@@ -12,13 +12,15 @@ from datetime import datetime
 
 class CircuitBreakerState(Enum):
     """Circuit breaker state enumeration."""
+
     CLOSED = "closed"
-    OPEN = "open" 
+    OPEN = "open"
     HALF_OPEN = "half_open"
 
 
 class PIIViolationType(Enum):
     """Types of PII violations detected."""
+
     BELGIAN_RRN = "belgian_rrn"
     BELGIAN_VAT = "belgian_vat"
     IBAN = "iban"
@@ -32,10 +34,11 @@ class PIIViolationType(Enum):
 class PIIBoundaryViolation:
     """
     Represents a PII boundary violation.
-    
+
     This is raised when PII is detected in data that would be sent
     to external APIs like Parallel.ai.
     """
+
     violation_type: PIIViolationType
     detected_patterns: List[str]
     risk_score: float
@@ -47,6 +50,7 @@ class PIIBoundaryViolation:
 @dataclass(frozen=True)
 class CircuitBreakerConfig:
     """Configuration for circuit breaker behavior."""
+
     failure_threshold: int = 3
     recovery_timeout_seconds: int = 600  # 10 minutes
     half_open_max_calls: int = 5
@@ -56,6 +60,7 @@ class CircuitBreakerConfig:
 @dataclass(frozen=True)
 class CircuitBreakerStatus:
     """Current status of the circuit breaker."""
+
     state: CircuitBreakerState
     failure_count: int
     last_failure_time: Optional[datetime]
@@ -67,11 +72,11 @@ class CircuitBreakerStatus:
 
 class PIIDetector(Protocol):
     """Protocol for PII detection implementations."""
-    
+
     def contains_pii(self, text: str) -> tuple[bool, List[Any]]:
         """Detect PII patterns in text."""
         ...
-    
+
     def calculate_risk_score(self, data: dict) -> float:
         """Calculate risk score for data payload."""
         ...
@@ -79,15 +84,15 @@ class PIIDetector(Protocol):
 
 class CircuitBreaker(Protocol):
     """Protocol for circuit breaker implementations."""
-    
+
     async def call(self, func, *args, **kwargs) -> Any:
         """Execute function with circuit breaker protection."""
         ...
-    
+
     async def get_status(self) -> CircuitBreakerStatus:
         """Get current circuit breaker status."""
         ...
-    
+
     async def reset(self) -> None:
         """Manually reset circuit breaker to closed state."""
         ...
@@ -96,6 +101,7 @@ class CircuitBreaker(Protocol):
 @dataclass(frozen=True)
 class ParallelCallRequest:
     """Request to make a call to Parallel.ai API."""
+
     endpoint: str
     payload: dict
     timeout_seconds: int = 30
@@ -106,6 +112,7 @@ class ParallelCallRequest:
 @dataclass(frozen=True)
 class ParallelCallResponse:
     """Response from Parallel.ai API call."""
+
     success: bool
     data: Optional[dict] = None
     error_message: Optional[str] = None
@@ -117,6 +124,7 @@ class ParallelCallResponse:
 @dataclass(frozen=True)
 class PIIGuardMetrics:
     """Metrics for PII boundary guard performance."""
+
     total_checks: int
     violations_blocked: int
     false_positives: int
