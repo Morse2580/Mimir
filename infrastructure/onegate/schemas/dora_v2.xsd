@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://nbb.be/onegate/dora/v2"
+           xmlns:dora="http://nbb.be/onegate/dora/v2"
+           elementFormDefault="qualified">
+           
+    <!-- Root element for DORA incident notification -->
+    <xs:element name="incident_notification">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="header" type="dora:headerType"/>
+                <xs:element name="incident_details" type="dora:incidentDetailsType"/>
+                <xs:element name="impact_assessment" type="dora:impactAssessmentType"/>
+                <xs:element name="timeline" type="dora:timelineType"/>
+                <xs:element name="regulatory_classification" type="dora:regulatoryClassificationType"/>
+                <xs:element name="remediation" type="dora:remediationType" minOccurs="0"/>
+                <xs:element name="attachments" type="dora:attachmentsType" minOccurs="0"/>
+            </xs:sequence>
+            <xs:attribute name="version" type="xs:string" fixed="2.0"/>
+            <xs:attribute name="submission_type" type="dora:submissionTypeEnum" use="required"/>
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- Header information -->
+    <xs:complexType name="headerType">
+        <xs:sequence>
+            <xs:element name="institution_id" type="dora:institutionIdType"/>
+            <xs:element name="institution_name" type="xs:string"/>
+            <xs:element name="contact_person" type="dora:contactPersonType"/>
+            <xs:element name="submission_date" type="xs:dateTime"/>
+            <xs:element name="incident_id" type="dora:incidentIdType"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Incident details -->
+    <xs:complexType name="incidentDetailsType">
+        <xs:sequence>
+            <xs:element name="severity" type="dora:severityEnum"/>
+            <xs:element name="category" type="dora:categoryEnum"/>
+            <xs:element name="description" type="xs:string"/>
+            <xs:element name="affected_services" type="dora:affectedServicesType"/>
+            <xs:element name="geographical_scope" type="dora:geographicalScopeType"/>
+            <xs:element name="root_cause" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Impact assessment -->
+    <xs:complexType name="impactAssessmentType">
+        <xs:sequence>
+            <xs:element name="clients_affected" type="xs:nonNegativeInteger"/>
+            <xs:element name="economic_impact" type="dora:economicImpactType" minOccurs="0"/>
+            <xs:element name="reputational_impact" type="dora:reputationalImpactEnum" minOccurs="0"/>
+            <xs:element name="data_losses" type="xs:boolean"/>
+            <xs:element name="data_breaches" type="xs:boolean"/>
+            <xs:element name="service_availability" type="dora:serviceAvailabilityType"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Timeline -->
+    <xs:complexType name="timelineType">
+        <xs:sequence>
+            <xs:element name="occurred_at" type="xs:dateTime"/>
+            <xs:element name="detected_at" type="xs:dateTime"/>
+            <xs:element name="confirmed_at" type="xs:dateTime" minOccurs="0"/>
+            <xs:element name="resolved_at" type="xs:dateTime" minOccurs="0"/>
+            <xs:element name="downtime_duration" type="xs:duration" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Regulatory classification -->
+    <xs:complexType name="regulatoryClassificationType">
+        <xs:sequence>
+            <xs:element name="dora_classification" type="dora:doraClassificationEnum"/>
+            <xs:element name="notification_required" type="xs:boolean"/>
+            <xs:element name="notification_deadline" type="xs:dateTime" minOccurs="0"/>
+            <xs:element name="regulatory_references" type="dora:regulatoryReferencesType"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Remediation -->
+    <xs:complexType name="remediationType">
+        <xs:sequence>
+            <xs:element name="immediate_actions" type="xs:string"/>
+            <xs:element name="preventive_measures" type="xs:string"/>
+            <xs:element name="timeline_for_resolution" type="xs:dateTime" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Supporting types -->
+    <xs:complexType name="contactPersonType">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string"/>
+            <xs:element name="role" type="xs:string"/>
+            <xs:element name="phone" type="dora:phoneNumberType"/>
+            <xs:element name="email" type="dora:emailType"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="affectedServicesType">
+        <xs:sequence>
+            <xs:element name="service" type="dora:serviceType" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="serviceType">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string"/>
+            <xs:element name="criticality" type="dora:criticalityEnum"/>
+            <xs:element name="impact_level" type="dora:impactLevelEnum"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="economicImpactType">
+        <xs:sequence>
+            <xs:element name="estimated_loss_eur" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="recovery_costs_eur" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="total_impact_eur" type="xs:decimal" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="serviceAvailabilityType">
+        <xs:sequence>
+            <xs:element name="availability_percentage" type="dora:percentageType"/>
+            <xs:element name="sla_breach" type="xs:boolean"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="geographicalScopeType">
+        <xs:sequence>
+            <xs:element name="countries" type="dora:countriesType"/>
+            <xs:element name="regions" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="countriesType">
+        <xs:sequence>
+            <xs:element name="country" type="dora:countryCodeType" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="regulatoryReferencesType">
+        <xs:sequence>
+            <xs:element name="reference" type="xs:string" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="attachmentsType">
+        <xs:sequence>
+            <xs:element name="attachment" type="dora:attachmentType" maxOccurs="10"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="attachmentType">
+        <xs:sequence>
+            <xs:element name="filename" type="xs:string"/>
+            <xs:element name="content_type" type="xs:string"/>
+            <xs:element name="size_bytes" type="xs:positiveInteger"/>
+            <xs:element name="checksum" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <!-- Simple types and enums -->
+    <xs:simpleType name="institutionIdType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="BE[0-9]{10}"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="incidentIdType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="INC-[0-9]{4}-[0-9]{3,6}"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="emailType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[^@]+@[^@]+\.[^@]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="phoneNumberType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\+32[0-9\s\-\(\)]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="countryCodeType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[A-Z]{2}"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="percentageType">
+        <xs:restriction base="xs:decimal">
+            <xs:minInclusive value="0.0"/>
+            <xs:maxInclusive value="100.0"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <!-- Enumerations -->
+    <xs:simpleType name="submissionTypeEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="INITIAL"/>
+            <xs:enumeration value="INTERMEDIATE"/>
+            <xs:enumeration value="FINAL"/>
+            <xs:enumeration value="UPDATE"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="severityEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CRITICAL"/>
+            <xs:enumeration value="MAJOR"/>
+            <xs:enumeration value="SIGNIFICANT"/>
+            <xs:enumeration value="MINOR"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="categoryEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CYBER_ATTACK"/>
+            <xs:enumeration value="SYSTEM_FAILURE"/>
+            <xs:enumeration value="DATA_BREACH"/>
+            <xs:enumeration value="THIRD_PARTY"/>
+            <xs:enumeration value="HUMAN_ERROR"/>
+            <xs:enumeration value="NATURAL_DISASTER"/>
+            <xs:enumeration value="OTHER"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="criticalityEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CRITICAL"/>
+            <xs:enumeration value="IMPORTANT"/>
+            <xs:enumeration value="NORMAL"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="impactLevelEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="HIGH"/>
+            <xs:enumeration value="MEDIUM"/>
+            <xs:enumeration value="LOW"/>
+            <xs:enumeration value="NONE"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="reputationalImpactEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="HIGH"/>
+            <xs:enumeration value="MEDIUM"/>
+            <xs:enumeration value="LOW"/>
+            <xs:enumeration value="NONE"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:simpleType name="doraClassificationEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="MAJOR"/>
+            <xs:enumeration value="SIGNIFICANT"/>
+            <xs:enumeration value="NO_REPORT_REQUIRED"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+</xs:schema>
