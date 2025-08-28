@@ -1,0 +1,415 @@
+{
+  "dashboard": {
+    "title": "RegOps Business Overview",
+    "description": "Executive dashboard for Belgian RegOps Platform business metrics",
+    "version": "1.0.0",
+    "refresh_interval": "30s",
+    "time_range": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "tags": ["regops", "business", "dora", "compliance"],
+    "panels": [
+      {
+        "id": 1,
+        "title": "DORA Incidents by Severity",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum by (severity) (dora_incidents_by_severity_total)",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Daily Digest Completion Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "digest_tier_a_count",
+            "legendFormat": "Tier A Items Found"
+          },
+          {
+            "expr": "hour(digest_completion_time_cet) <= 9",
+            "legendFormat": "On-Time Completion"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 3},
+                {"color": "green", "value": 5}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Budget Utilization",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "budget_utilization_percent",
+            "legendFormat": "Budget Used"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 50},
+                {"color": "orange", "value": 80},
+                {"color": "red", "value": 95}
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        }
+      },
+      {
+        "id": 4,
+        "title": "Parallel.ai API Health",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(parallel_calls_total[5m]) * 60",
+            "legendFormat": "Calls/min"
+          },
+          {
+            "expr": "(rate(parallel_errors_total[5m]) / rate(parallel_calls_total[5m])) * 100",
+            "legendFormat": "Error Rate %"
+          },
+          {
+            "expr": "circuit_breaker_state",
+            "legendFormat": "Circuit State"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 2}
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Compliance Review Pipeline",
+        "type": "bargauge",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum by (priority) (compliance_review_queue_pending)",
+            "legendFormat": "{{priority}} Priority"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short",
+            "min": 0
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "displayMode": "basic"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Security Violations (Critical)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "pii_violations_total",
+            "legendFormat": "PII Violations"
+          },
+          {
+            "expr": "budget_kill_switch_active",
+            "legendFormat": "Kill Switch Active"
+          },
+          {
+            "expr": "sum(compliance_hash_chain_breaks_total)",
+            "legendFormat": "Audit Trail Breaks"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "red", "value": 0.1}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 7,
+        "title": "DORA Deadline Compliance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(clock_deadline_miss_total[1h])",
+            "legendFormat": "Deadline Misses/hour"
+          },
+          {
+            "expr": "rate(dora_notifications_required_total[1h])",
+            "legendFormat": "Notifications Required/hour"
+          },
+          {
+            "expr": "rate(incidents_notifications_scheduled_total[1h])",
+            "legendFormat": "Notifications Scheduled/hour"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "reqps",
+            "min": 0
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Monthly Cost Tracking",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "budget_spend_eur",
+            "legendFormat": "Current Spend (EUR)"
+          },
+          {
+            "expr": "budget_utilization_percent * 15",
+            "legendFormat": "Utilization Target Line (€1500)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "currencyEUR",
+            "min": 0,
+            "max": 1500
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Utilization Target Line"},
+              "properties": [
+                {
+                  "id": "custom.drawStyle",
+                  "value": "line"
+                },
+                {
+                  "id": "color",
+                  "value": {"mode": "fixed", "fixedColor": "red"}
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Evidence Ledger Integrity",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "ledger_verify_ok",
+            "legendFormat": "Ledger Integrity"
+          },
+          {
+            "expr": "compliance_hash_chain_verification_rate_percent",
+            "legendFormat": "Verification Rate %"
+          },
+          {
+            "expr": "sum(compliance_audit_trail_operations_total{success=\"true\"})",
+            "legendFormat": "Successful Operations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 0.95},
+                {"color": "green", "value": 1}
+              ]
+            },
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "colorMode": "background"
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "DORA Deadlines",
+          "enable": true,
+          "iconColor": "red",
+          "datasource": "prometheus",
+          "expr": "changes(clock_deadline_miss_total[5m]) > 0"
+        },
+        {
+          "name": "Kill Switch Activations",
+          "enable": true,
+          "iconColor": "purple",
+          "datasource": "prometheus", 
+          "expr": "changes(budget_kill_switch_activations_total[5m]) > 0"
+        },
+        {
+          "name": "PII Violations",
+          "enable": true,
+          "iconColor": "orange",
+          "datasource": "prometheus",
+          "expr": "changes(pii_violations_total[5m]) > 0"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "tenant",
+          "type": "query",
+          "query": "label_values(tenant)",
+          "current": {
+            "value": "default",
+            "text": "default"
+          }
+        }
+      ]
+    }
+  }
+}
