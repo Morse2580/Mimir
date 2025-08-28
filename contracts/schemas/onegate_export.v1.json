@@ -1,0 +1,404 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/onegate_export/v1",
+  "title": "NBB OneGate Export Package",
+  "description": "Final XML export package for NBB OneGate submission",
+  "type": "object",
+  "required": [
+    "export_id",
+    "institution_info",
+    "incident_data",
+    "classification",
+    "deadlines",
+    "evidence_package",
+    "export_metadata"
+  ],
+  "properties": {
+    "export_id": {
+      "type": "string",
+      "pattern": "^export_[a-zA-Z0-9]{12}$",
+      "description": "Unique identifier for the export package"
+    },
+    "institution_info": {
+      "type": "object",
+      "required": ["institution_code", "institution_name", "contact_email"],
+      "properties": {
+        "institution_code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{4,10}$",
+          "description": "NBB institution identifier code"
+        },
+        "institution_name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200,
+          "description": "Official institution name"
+        },
+        "contact_email": {
+          "type": "string",
+          "format": "email",
+          "description": "Primary contact for this submission"
+        }
+      },
+      "additionalProperties": false
+    },
+    "incident_data": {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "clients_affected",
+        "downtime_minutes",
+        "services_critical",
+        "detected_at",
+        "confirmed_at",
+        "occurred_at"
+      ],
+      "properties": {
+        "incident_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "clients_affected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "downtime_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "services_critical": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "payment",
+              "trading",
+              "settlement",
+              "clearing",
+              "custody",
+              "lending",
+              "deposit",
+              "insurance",
+              "risk_management",
+              "compliance",
+              "reporting"
+            ]
+          }
+        },
+        "detected_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "confirmed_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "occurred_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 5000,
+          "description": "Detailed incident description for NBB"
+        },
+        "root_cause": {
+          "type": ["string", "null"],
+          "maxLength": 2000,
+          "description": "Root cause analysis if available"
+        },
+        "remediation_actions": {
+          "type": ["string", "null"],
+          "maxLength": 3000,
+          "description": "Actions taken to resolve the incident"
+        }
+      },
+      "additionalProperties": false
+    },
+    "classification": {
+      "type": "object",
+      "required": [
+        "severity",
+        "anchor_timestamp",
+        "classification_reasons",
+        "requires_notification"
+      ],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "significant", "minor", "no_report"]
+        },
+        "anchor_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "classification_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "requires_notification": {
+          "type": "boolean"
+        },
+        "dora_article_references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(Article|Art\\.) [0-9]+.*$"
+          },
+          "description": "Relevant DORA article references"
+        }
+      },
+      "additionalProperties": false
+    },
+    "deadlines": {
+      "type": "object",
+      "required": [
+        "initial_notification",
+        "final_report",
+        "timezone_used"
+      ],
+      "properties": {
+        "initial_notification": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DORA initial notification deadline"
+        },
+        "intermediate_report": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "final_report": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DORA final report deadline"
+        },
+        "nbb_notification": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "NBB OneGate submission deadline"
+        },
+        "timezone_used": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]+/[A-Za-z_]+$",
+          "description": "IANA timezone for calculations"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence_package": {
+      "type": "object",
+      "required": ["evidence_items", "audit_trail"],
+      "properties": {
+        "evidence_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "url", "hash", "description"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^evidence_[a-zA-Z0-9]{12}$"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "log_file",
+                  "screenshot",
+                  "monitoring_data",
+                  "regulatory_reference",
+                  "incident_report",
+                  "communication_record"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://snapshots\\.blob\\.core\\.windows\\.net/"
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "description": "SHA-256 hash for integrity verification"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "audit_trail": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["timestamp", "action", "actor", "details"],
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "incident_detected",
+                  "classification_performed",
+                  "evidence_collected",
+                  "review_completed",
+                  "export_generated"
+                ]
+              },
+              "actor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "details": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "export_metadata": {
+      "type": "object",
+      "required": [
+        "generated_at",
+        "generated_by",
+        "schema_version",
+        "xsd_validation_status"
+      ],
+      "properties": {
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC timestamp when export was generated"
+        },
+        "generated_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "System or user that generated the export"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^dora_v[0-9]+\\.[0-9]+$",
+          "description": "NBB XSD schema version used"
+        },
+        "xsd_validation_status": {
+          "type": "string",
+          "enum": ["valid", "invalid", "not_validated"],
+          "description": "XSD validation result"
+        },
+        "mimir_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Mimir platform version"
+        },
+        "export_format": {
+          "type": "string",
+          "enum": ["xml", "json"],
+          "default": "xml"
+        },
+        "file_size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "export_id": "export_abc123def456",
+      "institution_info": {
+        "institution_code": "BANK001",
+        "institution_name": "Belgian Pilot Bank NV",
+        "contact_email": "compliance@pilotbank.be"
+      },
+      "incident_data": {
+        "incident_id": "INC-2024-001",
+        "clients_affected": 1500,
+        "downtime_minutes": 120,
+        "services_critical": ["payment", "trading"],
+        "detected_at": "2024-03-15T08:30:00Z",
+        "confirmed_at": "2024-03-15T08:35:00Z",
+        "occurred_at": "2024-03-15T08:25:00Z",
+        "description": "Payment processing system experienced database connectivity issues affecting customer transactions.",
+        "root_cause": "Database connection pool exhaustion due to traffic spike",
+        "remediation_actions": "Increased connection pool size, implemented better monitoring, added circuit breakers"
+      },
+      "classification": {
+        "severity": "major",
+        "anchor_timestamp": "2024-03-15T08:30:00Z",
+        "classification_reasons": [
+          "clients_affected >= 1000",
+          "critical services affected: payment, trading"
+        ],
+        "requires_notification": true,
+        "dora_article_references": ["Article 18", "Article 19"]
+      },
+      "deadlines": {
+        "initial_notification": "2024-03-15T12:30:00Z",
+        "intermediate_report": null,
+        "final_report": "2024-03-22T08:30:00Z",
+        "nbb_notification": "2024-03-15T12:30:00Z",
+        "timezone_used": "Europe/Brussels"
+      },
+      "evidence_package": {
+        "evidence_items": [
+          {
+            "id": "evidence_log001abc456",
+            "type": "log_file",
+            "url": "https://snapshots.blob.core.windows.net/evidence/incident_logs_20240315.json",
+            "hash": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+            "description": "Database connection error logs during incident",
+            "created_at": "2024-03-15T08:30:00Z"
+          }
+        ],
+        "audit_trail": [
+          {
+            "timestamp": "2024-03-15T08:30:00Z",
+            "action": "incident_detected",
+            "actor": "monitoring_system",
+            "details": "Automated detection via database connection monitoring"
+          },
+          {
+            "timestamp": "2024-03-15T08:32:00Z",
+            "action": "classification_performed",
+            "actor": "mimir_rules_engine",
+            "details": "Classified as MAJOR based on client count and service criticality"
+          }
+        ]
+      },
+      "export_metadata": {
+        "generated_at": "2024-03-15T15:00:00Z",
+        "generated_by": "mimir_export_service",
+        "schema_version": "dora_v2.1",
+        "xsd_validation_status": "valid",
+        "mimir_version": "1.0.0",
+        "export_format": "xml",
+        "file_size_bytes": 51200
+      }
+    }
+  ]
+}

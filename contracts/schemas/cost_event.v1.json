@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/cost_event/v1",
+  "title": "Cost Tracking Event",
+  "description": "Event for tracking API costs and budget utilization",
+  "type": "object",
+  "required": [
+    "id",
+    "tenant",
+    "api_type",
+    "processor",
+    "cost_eur",
+    "use_case",
+    "timestamp"
+  ],
+  "properties": {
+    "id": {
+      "type": ["string", "null"],
+      "pattern": "^cost_[a-zA-Z0-9]{12}$",
+      "description": "Unique identifier for the cost entry"
+    },
+    "tenant": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Tenant identifier for cost allocation"
+    },
+    "api_type": {
+      "type": "string",
+      "enum": ["search", "task"],
+      "description": "Type of Parallel.ai API used"
+    },
+    "processor": {
+      "type": "string",
+      "enum": ["base", "pro", "core"],
+      "description": "Parallel.ai processor tier used"
+    },
+    "cost_eur": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "multipleOf": 0.001,
+      "description": "Cost incurred in EUR (3 decimal precision)"
+    },
+    "use_case": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "enum": [
+        "incident_enrichment",
+        "regulatory_search",
+        "obligation_mapping",
+        "policy_analysis",
+        "compliance_research",
+        "evidence_gathering",
+        "rule_validation",
+        "digest_generation"
+      ],
+      "description": "Business use case for cost allocation"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when cost was incurred"
+    },
+    "request_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Optional request ID for traceability"
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "properties": {
+        "request_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "response_size_bytes": {
+          "type": "integer", 
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "processing_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300000
+        },
+        "tokens_used": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "circuit_breaker_state": {
+          "type": "string",
+          "enum": ["closed", "open", "half_open"]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional metadata for cost analysis"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "cost_abc123def456",
+      "tenant": "pilot_bank",
+      "api_type": "search",
+      "processor": "pro",
+      "cost_eur": 0.005,
+      "use_case": "regulatory_search",
+      "timestamp": "2024-03-15T10:30:00Z",
+      "request_id": "req_search_789",
+      "metadata": {
+        "request_size_bytes": 1024,
+        "response_size_bytes": 8192,
+        "processing_time_ms": 1500,
+        "tokens_used": 2048,
+        "circuit_breaker_state": "closed"
+      }
+    },
+    {
+      "id": "cost_def456ghi789",
+      "tenant": "pilot_bank",
+      "api_type": "task",
+      "processor": "core",
+      "cost_eur": 0.020,
+      "use_case": "incident_enrichment",
+      "timestamp": "2024-03-15T11:45:00Z",
+      "request_id": null,
+      "metadata": {
+        "processing_time_ms": 5000,
+        "circuit_breaker_state": "closed"
+      }
+    }
+  ]
+}

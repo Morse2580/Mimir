@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mimir.regops.be/schemas/review_decision/v1",
+  "title": "Compliance Review Decision",
+  "description": "Decision output from lawyer review workflow",
+  "type": "object",
+  "required": [
+    "request_id",
+    "reviewer_id",
+    "reviewer_email",
+    "reviewer_role",
+    "decision",
+    "comments",
+    "evidence_reviewed",
+    "reviewed_at",
+    "review_duration_minutes",
+    "version_verified"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9]{12}$",
+      "description": "ID of the review request being decided"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier of the reviewer"
+    },
+    "reviewer_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address of the reviewer"
+    },
+    "reviewer_role": {
+      "type": "string",
+      "enum": [
+        "Senior Legal Counsel",
+        "Legal Counsel",
+        "Compliance Officer",
+        "Senior Compliance Officer",
+        "Risk Manager",
+        "Senior Risk Manager"
+      ],
+      "description": "Professional role of the reviewer"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["approved", "rejected", "needs_revision", "stale"],
+      "description": "Final decision on the mapping review"
+    },
+    "comments": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 5000,
+      "description": "Reviewer's detailed comments and rationale"
+    },
+    "evidence_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://snapshots\\.blob\\.core\\.windows\\.net/"
+      },
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true,
+      "description": "URLs to evidence documents that were actually reviewed"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when decision was made"
+    },
+    "review_duration_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10080,
+      "description": "Total time spent on review in minutes (max 1 week)"
+    },
+    "version_verified": {
+      "type": "boolean",
+      "description": "Whether the mapping version was verified unchanged during review"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "request_id": "req_abc123def456",
+      "reviewer_id": "lawyer_001",
+      "reviewer_email": "lawyer@company.com",
+      "reviewer_role": "Senior Legal Counsel",
+      "decision": "approved",
+      "comments": "Mapping accurately reflects DORA Article 18 requirements. The incident reporting procedures align with NBB guidance and EU technical standards. Evidence documents thoroughly reviewed.",
+      "evidence_reviewed": [
+        "https://snapshots.blob.core.windows.net/regulatory/fsma_dora_guidance_2024.pdf",
+        "https://snapshots.blob.core.windows.net/regulatory/nbb_technical_standards_2024.pdf"
+      ],
+      "reviewed_at": "2024-03-15T14:45:00Z",
+      "review_duration_minutes": 255,
+      "version_verified": true
+    },
+    {
+      "request_id": "req_def456ghi789",
+      "reviewer_id": "compliance_002",
+      "reviewer_email": "compliance@company.com",
+      "reviewer_role": "Compliance Officer",
+      "decision": "needs_revision",
+      "comments": "The mapping needs clarification on the specific notification timeframes. Please review NBB Circular 2024/03 section 4.2 for the correct escalation procedures.",
+      "evidence_reviewed": [
+        "https://snapshots.blob.core.windows.net/regulatory/nbb_circular_2024_03.pdf"
+      ],
+      "reviewed_at": "2024-03-16T09:15:00Z",
+      "review_duration_minutes": 180,
+      "version_verified": true
+    }
+  ]
+}
