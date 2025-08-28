@@ -71,11 +71,17 @@ def get_secrets_requiring_rotation(
 
 def generate_secret_name(
     base_name: str,
-    secret_type: SecretType,
+    secret_type,
     environment: str,
     version: Optional[str] = None
 ) -> str:
-    components = [environment.lower(), secret_type.value, base_name]
+    # Handle both SecretType enum and string inputs
+    if hasattr(secret_type, 'value'):
+        type_value = secret_type.value
+    else:
+        type_value = str(secret_type)
+    
+    components = [environment.lower(), type_value, base_name]
     
     if version:
         components.append(version)

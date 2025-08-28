@@ -289,7 +289,7 @@ def mask_sensitive_config(config: Dict[str, Any]) -> Dict[str, Any]:
     for key, value in config.items():
         config_schema = schema.get(key)
         
-        if config_schema and config_schema.is_sensitive:
+        if config_schema and config_schema.sensitivity in {ConfigSensitivity.CONFIDENTIAL, ConfigSensitivity.SECRET}:
             if isinstance(value, str) and len(value) > 8:
                 masked[key] = value[:4] + "*" * (len(value) - 8) + value[-4:]
             elif isinstance(value, str):

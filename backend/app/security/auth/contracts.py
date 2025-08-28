@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Set, Dict, Any, Optional, List
 
@@ -111,7 +111,8 @@ class Principal:
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.utcnow() > self.expires_at
+        now = datetime.now(timezone.utc)
+        return now > self.expires_at
     
     @property
     def is_privileged(self) -> bool:
