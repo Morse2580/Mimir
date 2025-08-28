@@ -1,0 +1,505 @@
+{
+  "dashboard": {
+    "title": "RegOps Performance SLOs",
+    "description": "Service Level Objectives monitoring for Belgian RegOps Platform",
+    "version": "1.0.0", 
+    "refresh_interval": "10s",
+    "time_range": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "tags": ["regops", "performance", "slo", "latency"],
+    "panels": [
+      {
+        "id": 1,
+        "title": "PII Detection Performance (SLO: <50ms p95)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(pii_detection_duration_ms_bucket[5m]))",
+            "legendFormat": "p95 Duration"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(pii_detection_duration_ms_bucket[5m]))",
+            "legendFormat": "p50 Duration"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "min": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "p95 Duration"},
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {"mode": "fixed", "fixedColor": "red"}
+                },
+                {
+                  "id": "custom.lineWidth",
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        },
+        "thresholds": [
+          {
+            "value": 50,
+            "color": "red",
+            "op": "gt"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Cost Checking Performance (SLO: <10ms p95)",
+        "type": "timeseries", 
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(cost_check_duration_ms_bucket[5m]))",
+            "legendFormat": "p95 Duration"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(cost_check_duration_ms_bucket[5m]))",
+            "legendFormat": "p50 Duration"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "min": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "p95 Duration"},
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {"mode": "fixed", "fixedColor": "red"}
+                },
+                {
+                  "id": "custom.lineWidth",
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table", 
+            "placement": "bottom"
+          }
+        },
+        "thresholds": [
+          {
+            "value": 10,
+            "color": "red",
+            "op": "gt"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "OneGate Export Performance (SLO: <30min p95)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(onegate_export_duration_ms_bucket[5m])) / 1000 / 60",
+            "legendFormat": "p95 Duration (minutes)"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(onegate_export_duration_ms_bucket[5m])) / 1000 / 60", 
+            "legendFormat": "p50 Duration (minutes)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "m",
+            "min": 0,
+            "max": 35,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "p95 Duration (minutes)"},
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {"mode": "fixed", "fixedColor": "red"}
+                },
+                {
+                  "id": "custom.lineWidth", 
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        },
+        "thresholds": [
+          {
+            "value": 30,
+            "color": "red",
+            "op": "gt"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "SLO Compliance Summary",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "(histogram_quantile(0.95, rate(pii_detection_duration_ms_bucket[5m])) < 50) * 100",
+            "legendFormat": "PII Detection SLO"
+          },
+          {
+            "expr": "(histogram_quantile(0.95, rate(cost_check_duration_ms_bucket[5m])) < 10) * 100",
+            "legendFormat": "Cost Check SLO"
+          },
+          {
+            "expr": "(histogram_quantile(0.95, rate(onegate_export_duration_ms_bucket[5m])) < 1800000) * 100",
+            "legendFormat": "OneGate Export SLO"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 100}
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Incident Classification Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(incidents_classification_duration_ms_bucket[5m]))",
+            "legendFormat": "p95 Classification Time"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(incidents_deadline_calculation_duration_ms_bucket[5m]))",
+            "legendFormat": "p95 Deadline Calculation Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "min": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          }
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        },
+        "thresholds": [
+          {
+            "value": 10,
+            "color": "yellow",
+            "op": "gt"
+          },
+          {
+            "value": 50,
+            "color": "red", 
+            "op": "gt"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Compliance Review SLA Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(compliance_reviews_sla_breached_total[5m]) / rate(compliance_reviews_completed_total[5m]) * 100",
+            "legendFormat": "SLA Breach Rate %"
+          },
+          {
+            "expr": "avg(compliance_review_duration_minutes) / 60",
+            "legendFormat": "Avg Review Duration (hours)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "percent",
+            "min": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Avg Review Duration (hours)"},
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "h"
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Parallel.ai API Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(parallel_calls_duration_ms_bucket[5m]))",
+            "legendFormat": "p95 API Response Time"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(parallel_calls_duration_ms_bucket[5m]))",
+            "legendFormat": "p50 API Response Time"
+          },
+          {
+            "expr": "rate(parallel_errors_total[5m]) / rate(parallel_calls_total[5m]) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ms",
+            "min": 0,
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 2
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Error Rate %"},
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "color",
+                  "value": {"mode": "fixed", "fixedColor": "red"}
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {
+            "mode": "multi"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        },
+        "thresholds": [
+          {
+            "value": 2,
+            "color": "red",
+            "op": "gt"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Daily Digest Completion SLO",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "digest_tier_a_count",
+            "legendFormat": "Tier A Items Found Today"
+          },
+          {
+            "expr": "hour(digest_completion_time_cet)",
+            "legendFormat": "Completion Hour (CET)"
+          },
+          {
+            "expr": "(hour(digest_completion_time_cet) <= 9) * 100",
+            "legendFormat": "On-Time Completion %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 100}
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "On-Time Completion %"},
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "orientation": "vertical",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "colorMode": "background"
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "SLO Violations",
+          "enable": true,
+          "iconColor": "red",
+          "datasource": "prometheus",
+          "expr": "histogram_quantile(0.95, rate(pii_detection_duration_ms_bucket[5m])) > 50 or histogram_quantile(0.95, rate(cost_check_duration_ms_bucket[5m])) > 10 or histogram_quantile(0.95, rate(onegate_export_duration_ms_bucket[5m])) > 1800000"
+        },
+        {
+          "name": "Performance Degradation",
+          "enable": true,
+          "iconColor": "orange", 
+          "datasource": "prometheus",
+          "expr": "rate(parallel_errors_total[5m]) / rate(parallel_calls_total[5m]) > 0.02"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "operation",
+          "type": "query",
+          "query": "label_values(operation)",
+          "current": {
+            "value": "all",
+            "text": "All Operations"
+          },
+          "includeAll": true
+        },
+        {
+          "name": "percentile",
+          "type": "custom",
+          "options": [
+            {"text": "p50", "value": "0.50"},
+            {"text": "p95", "value": "0.95"},
+            {"text": "p99", "value": "0.99"}
+          ],
+          "current": {
+            "value": "0.95",
+            "text": "p95"
+          }
+        }
+      ]
+    }
+  }
+}
